@@ -2,14 +2,42 @@
   "name": "dariokart",
   "version": "1.0.0",
   "private": true,
-  "description": "Dariokart - a Super Mario Kart inspired multiplayer racer rendered with Rive",
+  "description": "Dariokart \u2014 a Mario Kart\u2013inspired 3D kart racer for the web: Three.js world, Rive UI/HUD/animated textures, bots at three difficulty levels, procedural chiptune audio and Firebase online multiplayer.",
+  "license": "MIT",
+  "author": "Pedro Massango",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pedromassango/dariokart.git"
+  },
+  "homepage": "https://github.com/pedromassango/dariokart#readme",
+  "bugs": {
+    "url": "https://github.com/pedromassango/dariokart/issues"
+  },
+  "keywords": [
+    "rive",
+    "threejs",
+    "webgl",
+    "kart",
+    "racing",
+    "game",
+    "firebase",
+    "multiplayer",
+    "mario-kart",
+    "fan-game"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "npm run riv && tsc --noEmit && vite build",
     "preview": "vite preview",
     "riv": "node scripts/rivgen/build.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx scripts/simulate.ts",
+    "difficulty": "tsx scripts/difficulty-report.ts",
+    "demo": "bash scripts/demo/make-demo.sh"
   },
   "dependencies": {
     "@rive-app/canvas-advanced": "^2.44.2",
@@ -18,6 +46,7 @@
   },
   "devDependencies": {
     "@types/three": "^0.170.0",
+    "playwright": "^1.59.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.4"

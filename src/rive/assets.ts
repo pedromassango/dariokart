@@ -48,6 +48,8 @@ export class RiveAssets {
   }
 
   private get(key: string, name: string): Inst | null {
+    // instances are cached per (key, artboard): the same key may legitimately show different artboards over time
+    key = key + '|' + name;
     let inst = this.insts.get(key);
     if (inst) return inst;
     if (!this.file || !this.names.has(name)) return null;

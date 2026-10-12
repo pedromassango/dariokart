@@ -3,3 +3,9 @@ dist
 .env
 .env.local
 .DS_Store
+
+# Firebase emulator logs
+*-debug.log
+
+# demo capture scratch
+.demo-tmp

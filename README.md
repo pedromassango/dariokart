@@ -2,6 +2,19 @@
 
 A Mario Kart–inspired 3D kart racer for the web, with online multiplayer, bots at three difficulty levels, and procedural music and sound effects.
 
+<p align="center">
+  <img src="docs/media/dariokart-demo.gif" alt="Dariokart gameplay: racing on Dario Circuit with the Rive HUD" width="720">
+</p>
+
+<p align="center">
+  🎬 <a href="docs/media/dariokart-demo.mp4"><b>Watch the full 40-second demo with sound (MP4)</b></a>: menus, a race start with the countdown referee, items, four more courses, the finish and results.
+</p>
+
+| | |
+|---|---|
+| ![Driver select with Rive portraits](docs/media/shot-select.jpg) | ![Racing on Dario Circuit](docs/media/shot-race.jpg) |
+| ![Bowzer Fortress](docs/media/shot-fortress.jpg) | ![Finishing on Prism Road](docs/media/shot-prism.jpg) |
+
 - **3D world:** Three.js / WebGL. Courses, karts, characters, item boxes, coins, lighting, shadows, particles.
 - **Rive:** every 2D element: logo, menus, character portraits, HUD (a vector font made of Rive artboards), place badges, item slot, item icons, the countdown referee, the trophy. Some Rive artboards also run *inside* the 3D world as live textures (the animated "?" faces on item boxes, the start-gate banner, the thwomp faces).
 - **Realtime:** Firebase Realtime Database (rooms, lobby, race state sync, item events).
@@ -12,7 +25,10 @@ A Mario Kart–inspired 3D kart racer for the web, with online multiplayer, bots
 npm install
 npm run dev        # http://localhost:5173
 npm run build      # regenerates the .riv, type-checks, bundles into dist/
+npm test           # headless races on every course at every difficulty
 ```
+
+Requires Node 20+. Single-player, Grand Prix, Time Trial and 2P split screen work offline; only online play needs Firebase.
 
 ## Game modes
 
@@ -47,9 +63,9 @@ npm run build      # regenerates the .riv, type-checks, bundles into dist/
 
 On touch devices, on-screen controls appear during races.
 
-## Online multiplayer (Firebase): API key pending
+## Online multiplayer (Firebase)
 
-Online mode is disabled until a Firebase config is provided. Everything else works offline.
+Online mode needs your own Firebase project; no keys are committed to this repo. Until a config is provided, the menu marks online play as unavailable and everything else works offline.
 
 1. Create a Firebase project and enable **Realtime Database** and **Authentication → Anonymous**.
 2. Copy `.env.example` to `.env.local` and fill in the `VITE_FIREBASE_*` values from Project settings → Your apps → Web app.
@@ -114,3 +130,19 @@ Latest difficulty measurements (all 6 courses, 2 seeds each):
 | Easy | 36.0 s | 22.8 s | 0 | 0.0 |
 | Medium | 27.9 s | 17.1 s | 0 | 0.4 |
 | Hard | 23.7 s | 14.2 s | 35 | 0.5 |
+
+## Demo video
+
+`npm run demo` regenerates the demo video, GIF and screenshots in `docs/media/`. It needs a running dev server, ffmpeg and `npx playwright install chromium`.
+
+`scripts/demo/record.mjs` drives the real game in headless Chromium and steps it exactly 1/30 s per frame, so the footage is smooth however fast the machine renders. `scripts/demo/audio.mjs` records the game's own audio engine on the same timeline.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). CI type-checks, rebuilds and validates the Rive file, runs the headless race tests and builds the bundle on every push and pull request.
+
+## License and disclaimer
+
+[MIT](LICENSE) © 2026 Pedro Massango.
+
+Dariokart is a non-commercial fan tribute. It is not affiliated with, endorsed by or connected to Nintendo. "Mario Kart" and related names are trademarks of their respective owners. Every character, course, logo, texture, model, piece of music and sound effect here is original: drawn in code, generated procedurally or composed for this project. No assets from any commercial game are included.

@@ -41,6 +41,14 @@ export class App {
   onFrame: ((dt: number) => void) | null = null;
   /** dev/testing: when true the loop renders but does not advance the simulation */
   manualStep = false;
+  /** capture/testing: when true, the loop only runs frames requested via requestStep(), each exactly 1/30 s */
+  stepMode = false;
+  private stepQueue: (() => void)[] = [];
+
+  /** Advance exactly one 1/30 s frame (stepMode); resolves after it has been drawn. */
+  requestStep(): Promise<void> {
+    return new Promise((resolve) => this.stepQueue.push(resolve));
+  }
 
   constructor(canvas: HTMLCanvasElement, glCanvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -148,8 +156,15 @@ export class App {
   }
 
   private loop = (now: number) => {
-    const dt = Math.min(0.1, Math.max(0, (now - this.last) / 1000));
+    let dt = Math.min(0.1, Math.max(0, (now - this.last) / 1000));
     this.last = now;
+    if (this.stepMode) {
+      const done = this.stepQueue.shift();
+      if (!done) { this.rive.requestAnimationFrame(this.loop); return; }
+      dt = 1 / 30;
+      // resolve once this frame's Rive draw calls have been flushed
+      requestAnimationFrame(() => done());
+    }
     this.t += dt;
     this.assets.beginFrame(dt);
     this.onFrame?.(dt);

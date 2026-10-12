@@ -126,16 +126,20 @@ export function botInput(race: Race, k: Kart, dt: number): KartInput {
     const vc = (turnRate / kappa) * margin;
     vAllowed = Math.min(vAllowed, Math.sqrt(vc * vc + 2 * 160 * a * 8));
   }
-  if (k.drift === 0) target = Math.min(target, vAllowed);
+  target = Math.min(target, vAllowed * (k.drift !== 0 ? 1.1 : 1));
   out.accel = k.speed < target;
   out.brake = (k.speed > target * 1.08 && fallTrack) || (k.speed > target * 1.25 && Math.abs(err) > 0.5);
 
-  // drifting in long corners (hard bots)
-  const curve = tr.speedHint[(k.idx + 6) % n];
-  if (sk.drifts && curve < 0.78 && k.speed > maxS * 0.75 && Math.abs(out.steer) > 0.45 && !(fallTrack && edgeRatio > 0.45)) {
-    out.hop = k.drift !== 0 ? true : !k.prevHop;
-  } else if (k.drift !== 0) {
-    out.hop = curve < 0.85 && !(fallTrack && edgeRatio > 0.6); // hold until corner exit
+  // drifting through corners (hard bots): tap hop on corner entry, keep it held through the hop
+  // so the drift engages on landing, and hold the drift until the corner opens up
+  const curveAhead = Math.min(tr.speedHint[(k.idx + 4) % n], tr.speedHint[(k.idx + 8) % n]);
+  const curveNow = tr.speedHint[(k.idx + 2) % n];
+  const edgeRisk = fallTrack; // no power-slides over voids/water/lava
+  if (k.drift !== 0) {
+    // release once the mini-turbo is charged and the corner is opening
+    out.hop = curveNow < 0.86 || (k.driftCharge < 1.05 && curveNow < 0.95);
+  } else if (sk.drifts && curveAhead < 0.82 && k.speed > maxS * 0.55 && Math.abs(out.steer) > 0.25 && !edgeRisk) {
+    out.hop = k.hopping || !k.prevHop;
   } else out.hop = false;
 
   // stuck / wrong way recovery

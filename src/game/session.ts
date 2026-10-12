@@ -290,6 +290,7 @@ export class RaceSession {
   render3D(gl: THREE.WebGLRenderer, w: number, h: number) {
     if (!this.world) {
       this.world = new World3D(this.race, riveTextures());
+      this.world.setEnvironment(gl);
       this.world.update(0, this.time, this.locals[0] ?? this.leader()); // place karts immediately
     }
     const views = this.views(w, h);

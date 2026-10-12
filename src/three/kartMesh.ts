@@ -118,8 +118,12 @@ export function buildKart(c: CharacterDef): KartRig {
     const pivot = new THREE.Group();
     pivot.position.set(x, r, z);
     const spin = new THREE.Group();
-    const tire = mesh(geo.cyl, rubber, 0, 0, 0, r, w, r);
-    tire.rotation.x = Math.PI / 2;
+    const tire = new THREE.Mesh(new THREE.TorusGeometry(r * 0.7, r * 0.34, 14, 28), rubber);
+    tire.scale.set(1, 1, w / (r * 0.68));
+    tire.castShadow = true;
+    const side = mesh(geo.cyl, rubber, 0, 0, 0, r * 0.72, w * 0.9, r * 0.72);
+    side.rotation.x = Math.PI / 2;
+    spin.add(side);
     const rim = mesh(geo.cyl, chrome, 0, 0, Math.sign(z) * 0.05, r * 0.55, w * 1.02, r * 0.55);
     rim.rotation.x = Math.PI / 2;
     const hub = mesh(geo.cyl, paintMat, 0, 0, Math.sign(z) * 0.1, r * 0.25, w * 1.04, r * 0.25);
@@ -127,7 +131,7 @@ export function buildKart(c: CharacterDef): KartRig {
     // tread blocks so spinning reads
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2;
-      const tb = mesh(geo.cyl, dark, Math.cos(a) * r * 0.98, Math.sin(a) * r * 0.98, 0, 0.18, w * 1.01, 0.18);
+      const tb = mesh(geo.cyl, dark, Math.cos(a) * r * 0.93, Math.sin(a) * r * 0.93, 0, 0.13, w * 0.75, 0.13);
       tb.rotation.x = Math.PI / 2;
       spin.add(tb);
     }
@@ -206,10 +210,13 @@ function buildHead(head: THREE.Group, c: CharacterDef, skin: THREE.Material) {
   const big = c.id === 'bowzer' || c.id === 'donkeyjr';
   const R = big ? 2.4 : 2.1;
   const eyes = (x: number, y: number, spread: number, size: number) => {
+    // MK-style big glossy eyes that sit proud of the face
+    x += size * 0.25; size *= 1.25;
     for (const s of [-1, 1]) {
-      head.add(mesh(geo.sphere, white, x, y, s * spread, size * 0.45, size, size * 0.6));
-      head.add(mesh(geo.sphere, iris, x + size * 0.32, y - size * 0.05, s * spread, size * 0.2, size * 0.6, size * 0.38));
-      head.add(mesh(geo.sphere, pupil, x + size * 0.42, y - size * 0.05, s * spread, size * 0.12, size * 0.38, size * 0.24));
+      head.add(mesh(geo.sphere, white, x, y, s * spread, size * 0.42, size, size * 0.6));
+      head.add(mesh(geo.sphere, iris, x + size * 0.3, y - size * 0.08, s * spread, size * 0.18, size * 0.62, size * 0.42));
+      head.add(mesh(geo.sphere, pupil, x + size * 0.4, y - size * 0.08, s * spread, size * 0.1, size * 0.4, size * 0.26));
+      head.add(mesh(geo.sphere, white, x + size * 0.46, y + size * 0.22, s * spread - size * 0.1, size * 0.05, size * 0.14, size * 0.1)); // highlight
     }
   };
   switch (c.id) {
@@ -218,7 +225,7 @@ function buildHead(head: THREE.Group, c: CharacterDef, skin: THREE.Material) {
       const tall = c.id === 'luigio' ? 1.12 : 1;
       head.add(mesh(geo.sphere, skin, 0, 0, 0, R, R * tall, R));
       head.add(mesh(geo.sphere, mat('#ffb894', { rough: 0.5 }), R * 0.98, -0.25, 0, 0.75)); // nose
-      eyes(R * 0.78, 0.55, 0.6, 0.7);
+      eyes(R * 0.8, 0.3, 0.6, 0.66);
       const stache = mat('#2c1608', { rough: 0.8 });
       for (const s of [-1, 1]) {
         const m = mesh(geo.sphere, stache, R * 0.86, -0.85, s * 0.6, 0.45, 0.4, 0.85);
@@ -228,14 +235,15 @@ function buildHead(head: THREE.Group, c: CharacterDef, skin: THREE.Material) {
       for (const s of [-1, 1]) head.add(mesh(geo.sphere, skin, -0.1, 0, s * R, 0.45, 0.6, 0.3)); // ears
       head.add(mesh(geo.sphere, mat('#4a2810', { rough: 0.9 }), -0.9, -0.7, 0, R * 0.7, R * 0.55, R * 0.85)); // hair back
       const hat = mat(c.hat, { rough: 0.45 });
-      head.add(mesh(geo.hemi, hat, -0.1, 0.45 * tall, 0, R * 1.08, R * 0.95, R * 1.08));
-      const brim = mesh(geo.cyl, hat, R * 0.85, 0.55 * tall, 0, 1.5, 0.22, 1.9);
+      head.add(mesh(geo.hemi, hat, -0.1, 0.75 * tall, 0, R * 1.08, R * 0.9, R * 1.08));
+      const brim = mesh(geo.cyl, hat, R * 0.85, 0.95 * tall, 0, 1.5, 0.22, 1.9);
       brim.scale.set(1.5, 0.22, 1.9);
       head.add(brim);
       const em = new THREE.Mesh(new THREE.CircleGeometry(0.85, 24), new THREE.MeshStandardMaterial({ map: tex.emblem(c.letter, c.hat), roughness: 0.4 }));
-      em.position.set(R * 0.72, 1.55 * tall, 0);
-      // head matrices are still identity here, so lookAt works in head-local space
-      em.lookAt(new THREE.Vector3(R * 3, 2.6 * tall, 0));
+      // sit on the cap's front surface (~35° up); head matrices are identity here, so lookAt is head-local
+      const capR = R * 1.08, a = 0.6;
+      em.position.set(-0.1 + Math.cos(a) * capR * 1.01, 0.75 * tall + Math.sin(a) * capR * 0.9 * 1.01, 0);
+      em.lookAt(em.position.clone().add(new THREE.Vector3(Math.cos(a), Math.sin(a), 0)));
       head.add(em);
       break;
     }

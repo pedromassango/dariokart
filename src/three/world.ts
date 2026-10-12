@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Race } from '../game/race';
 import type { Kart } from '../game/kart';
@@ -72,6 +73,8 @@ export class ChaseCam {
     if (Math.abs(this.cam.fov - fov) > 0.05) { this.cam.fov += (fov - this.cam.fov) * Math.min(1, dt * 5); this.cam.updateProjectionMatrix(); }
   }
 }
+
+let envTex: THREE.Texture | null = null;
 
 interface Spark { sprite: THREE.Sprite; vx: number; vy: number; vz: number; life: number; max: number; grow: number }
 
@@ -643,6 +646,17 @@ export class World3D {
       p.sprite.scale.multiplyScalar(1 + p.grow * dt * 0.3);
       (p.sprite.material as THREE.SpriteMaterial).opacity = Math.min(1, (p.life / p.max) * 1.6);
     }
+  }
+
+  /** image-based lighting so chrome/metal and glossy paint have something to reflect */
+  setEnvironment(gl: THREE.WebGLRenderer) {
+    if (!envTex) {
+      const pm = new THREE.PMREMGenerator(gl);
+      envTex = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+      pm.dispose();
+    }
+    this.scene.environment = envTex;
+    this.scene.environmentIntensity = this.look.sky === 'day' ? 0.55 : 0.35;
   }
 
   /** hide karts squeezed between the camera and the followed kart (they would block the view) */

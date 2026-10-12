@@ -105,3 +105,12 @@ Open the game in two different origins, for example two dev servers on different
 | `src/net/` | Firebase connection and multiplayer rooms |
 | `src/ui/menus.ts` | Menus, lobby, results, Grand Prix flow |
 | `scripts/simulate.ts` | Headless test that races every course at every difficulty: `npx tsx scripts/simulate.ts` |
+| `scripts/difficulty-report.ts` | Measures bot behaviour per difficulty: `npx tsx scripts/difficulty-report.ts` |
+
+Latest difficulty measurements (all 6 courses, 2 seeds each):
+
+| Difficulty | Avg bot lap | Best bot lap | Drifts per race | Falls per race |
+|---|---|---|---|---|
+| Easy | 36.0 s | 22.8 s | 0 | 0.0 |
+| Medium | 27.9 s | 17.1 s | 0 | 0.4 |
+| Hard | 23.7 s | 14.2 s | 35 | 0.5 |

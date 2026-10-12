@@ -20,8 +20,8 @@ export interface CharacterDef {
 
 // SMK-style classes: balanced (Dario/Luigio), accel (Pearl/Yoshio), heavy (Bowzer/DonkeyJr), handling (Toadie/Koopo)
 export const CHARACTERS: CharacterDef[] = [
-  { id: 'dario', name: 'Dario', color: '#e52521', trim: '#2050c8', skin: '#ffc890', hat: '#e52521', letter: 'D', accel: 3, topSpeed: 3, handling: 3, weight: 3 },
-  { id: 'luigio', name: 'Luigio', color: '#2fae3c', trim: '#2050c8', skin: '#ffc890', hat: '#2fae3c', letter: 'L', accel: 3, topSpeed: 3, handling: 3, weight: 3 },
+  { id: 'dario', name: 'Dario', color: '#e52521', trim: '#2050c8', skin: '#ffc49a', hat: '#e52521', letter: 'D', accel: 3, topSpeed: 3, handling: 3, weight: 3 },
+  { id: 'luigio', name: 'Luigio', color: '#2fae3c', trim: '#2050c8', skin: '#ffc49a', hat: '#2fae3c', letter: 'L', accel: 3, topSpeed: 3, handling: 3, weight: 3 },
   { id: 'pearl', name: 'Pearl', color: '#ff7fc4', trim: '#ffffff', skin: '#ffd8b0', hat: '#ffd23f', letter: 'P', accel: 5, topSpeed: 2, handling: 3, weight: 2 },
   { id: 'yoshio', name: 'Yoshio', color: '#6bd13a', trim: '#e02020', skin: '#6bd13a', hat: '#6bd13a', letter: 'Y', accel: 5, topSpeed: 2, handling: 3, weight: 2 },
   { id: 'bowzer', name: 'Bowzer', color: '#f7a400', trim: '#2a8030', skin: '#f0c040', hat: '#e05010', letter: 'B', accel: 1, topSpeed: 5, handling: 2, weight: 5 },

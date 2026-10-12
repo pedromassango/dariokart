@@ -9,3 +9,8 @@ the firebase.json emulators config.
 23:40:31.466 [NamespaceSystem-akka.actor.default-dispatcher-12] INFO com.firebase.core.namespace.NamespaceActor - demo-dariokart successfully activated FBKV (SurveyIdle(0)) wait: 1ms, init: 0ms
 23:41:11.487 [NamespaceSystem-akka.actor.default-dispatcher-14] INFO com.firebase.core.namespace.DeadLetterResponder - Message DataPush(List(rooms, 5UKE),com.firebase.util.data.SparseMergeRenderable@560896924) meant for other actor akka://NamespaceSystem/user/demo-dariokart/$b from akka://NamespaceSystem/deadLetters went to deadletter actor
 23:41:58.435 [NamespaceSystem-akka.actor.default-dispatcher-21] INFO com.firebase.core.namespace.DeadLetterResponder - Message DataPush(List(rooms, MNNE),com.firebase.util.data.SparseMergeRenderable@96716422) meant for other actor akka://NamespaceSystem/user/demo-dariokart/$c from akka://NamespaceSystem/deadLetters went to deadletter actor
+23:43:37.271 [Thread-0] INFO com.firebase.server.forge.App$ - Attempting graceful shutdown.
+23:43:37.276 [NamespaceSystem-akka.actor.default-dispatcher-55] INFO com.firebase.core.namespace.Terminator$Terminator - 2 actors left to terminate: demo-dariokart-default-rtdb, demo-dariokart
+23:43:37.279 [NamespaceSystem-akka.actor.default-dispatcher-59] INFO com.firebase.core.namespace.NamespaceActor - stopped namespace actor for demo-dariokart-default-rtdb
+23:43:37.279 [NamespaceSystem-akka.actor.default-dispatcher-55] INFO com.firebase.core.namespace.NamespaceActor - stopped namespace actor for demo-dariokart
+23:43:37.280 [Thread-0] INFO com.firebase.server.forge.App$ - Graceful shutdown complete.

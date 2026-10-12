@@ -8,6 +8,7 @@ import { charById, type CharacterId } from './characters';
 import type { Viewport } from './projector';
 import type { Banner } from './hud';
 import { drawHud3D, drawReferee3D, drawCourseTitle } from './hud3d';
+import { riveText, riveTextWidth } from '../rive/riveText';
 import * as THREE from 'three';
 import { World3D, ChaseCam } from '../three/world';
 import { riveTextures } from '../three/riveTextures';
@@ -287,7 +288,10 @@ export class RaceSession {
 
   /** 3D pass (Three.js) — w/h in device pixels */
   render3D(gl: THREE.WebGLRenderer, w: number, h: number) {
-    if (!this.world) this.world = new World3D(this.race, riveTextures());
+    if (!this.world) {
+      this.world = new World3D(this.race, riveTextures());
+      this.world.update(0, this.time, this.locals[0] ?? this.leader()); // place karts immediately
+    }
     const views = this.views(w, h);
     gl.setScissorTest(views.length > 1);
     views.forEach((vp, i) => {
@@ -305,7 +309,10 @@ export class RaceSession {
   }
 
   /** Rive overlay pass (HUD, referee, titles) — w/h in CSS pixels */
+  private assetsRef: RiveAssets | null = null;
+
   renderOverlay(d: Draw, assets: RiveAssets, w: number, h: number) {
+    this.assetsRef = assets;
     if (this.isAttract) return;
     const race = this.race;
     const views = this.views(w, h);
@@ -334,9 +341,10 @@ export class RaceSession {
       const dist = Math.hypot(k.x - cam.cam.position.x, k.y - cam.cam.position.z);
       if (dist > 400) continue;
       const label = k.name.slice(0, 10);
-      const w = label.length * 12 + 16;
-      d.roundRect(x - w / 2, y - 22, w, 22, 11, argb('#141a40', 0.75), argb(k.char.color), 2);
-      d.text(label, x, y - 17, 2, argb('#ffffff'), { align: 0.5 });
+      const th = Math.max(16, Math.min(28, 4200 / Math.max(60, dist)));
+      const w = riveTextWidth(label, th) + th;
+      d.roundRect(x - w / 2, y - th * 1.5, w, th * 1.5, th * 0.75, argb('#141a40', 0.7), argb(k.char.color), 3);
+      if (!riveText(d, this.assetsRef!, label, x, y - th * 1.32, th, 0.5)) d.text(label, x, y - th * 1.2, 2, argb('#ffffff'), { align: 0.5 });
     }
   }
 

@@ -42,3 +42,20 @@ Object.assign(CONTRACT, {
   Banner: { width: 1024, height: 160, inputs: {} },
   Lap: { width: 140, height: 60, inputs: {} },
 });
+
+// 3D-world live textures
+CONTRACT.TurnSign = { width: 256, height: 160, inputs: { dir: 'number' }, scenarios: [{ dir: 1 }, { dir: -1 }, { dir: 1 }] };
+CONTRACT.Crowd = { width: 512, height: 128, inputs: {} };
+Object.assign(CONTRACT, {
+  Cloud: { width: 256, height: 128, inputs: {} },
+  AdBoard_1: { width: 320, height: 120, inputs: {} }, AdBoard_2: { width: 320, height: 120, inputs: {} },
+  AdBoard_3: { width: 320, height: 120, inputs: {} }, AdBoard_4: { width: 320, height: 120, inputs: {} },
+  Flag: { width: 64, height: 160, inputs: {} },
+  Lamp: { width: 64, height: 200, inputs: {} },
+  Cactus: { width: 64, height: 112, inputs: {} },
+  Boo: { width: 96, height: 96, inputs: {} },
+  Piranha: { width: 64, height: 128, inputs: {} },
+  Penguin: { width: 64, height: 80, inputs: {} },
+  IceBlock: { width: 96, height: 96, inputs: {} },
+});
+for (const id of CHAR_IDS) CONTRACT['Face_' + id] = { width: 256, height: 256, inputs: { mood: 'number' }, scenarios: [{ mood: 0 }, { mood: 1 }, { mood: 2 }, { mood: 3 }, { mood: 0 }] };

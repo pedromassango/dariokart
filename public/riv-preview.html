@@ -41,8 +41,8 @@ const preset = Object.fromEntries((params.get('set') || '').split(',').filter(Bo
 const userScale = parseFloat(params.get('scale') || '0');
 const fixedT = params.has('t') ? parseFloat(params.get('t')) : null;
 
-const RANGES = { steer: [-1, 1, 0.05], stage: [0, 3, 1], rank: [1, 3, 1], view: [0, 4, 1] };
-const SECTIONS = [['Glyph_', 'HUD font'], ['Place_', 'HUD'], ['ItemSlot', 'HUD'], ['Lap', 'HUD'], ['Banner', 'Banner'], ['Logo', 'Title'], ['Referee', 'Referee'], ['Portrait_', 'Portraits'], ['Kart_', 'Karts'], ['Item_', 'Items'], ['ItemBox', 'Items'], ['Trophy', 'Trophy'], ['ItemPanel', 'Track props'], ['Pipe', 'Track props'], ['Thwomp', 'Track props'], ['Tree', 'Track props'], ['Bush', 'Track props'], ['Palm', 'Track props'], ['DeadTree', 'Track props'], ['Mole', 'Track props']];
+const RANGES = { steer: [-1, 1, 0.05], stage: [0, 3, 1], rank: [1, 3, 1], view: [0, 4, 1], dir: [-1, 1, 2], mood: [0, 3, 1] };
+const SECTIONS = [['Face_', 'Face textures'], ['IceBlock', 'Track props'], ['Cloud', 'Track props'], ['AdBoard_', 'Track props'], ['Flag', 'Track props'], ['Lamp', 'Track props'], ['Cactus', 'Track props'], ['Boo', 'Track props'], ['Piranha', 'Track props'], ['Penguin', 'Track props'], ['TurnSign', '3D world textures'], ['Crowd', '3D world textures'], ['Glyph_', 'HUD font'], ['Place_', 'HUD'], ['ItemSlot', 'HUD'], ['Lap', 'HUD'], ['Banner', 'Banner'], ['Logo', 'Title'], ['Referee', 'Referee'], ['Portrait_', 'Portraits'], ['Kart_', 'Karts'], ['Item_', 'Items'], ['ItemBox', 'Items'], ['Trophy', 'Trophy'], ['ItemPanel', 'Track props'], ['Pipe', 'Track props'], ['Thwomp', 'Track props'], ['Tree', 'Track props'], ['Bush', 'Track props'], ['Palm', 'Track props'], ['DeadTree', 'Track props'], ['Mole', 'Track props']];
 
 const status = document.getElementById('status');
 const grid = document.getElementById('grid');
@@ -66,7 +66,7 @@ for (let i = 0; i < file.artboardCount(); i++) {
   if (sec !== lastSection) {
     const s = document.createElement('div'); s.className = 'section'; s.textContent = sec; grid.appendChild(s); lastSection = sec;
   }
-  const scale = userScale || (name.startsWith('Glyph_') ? 1 : w >= 400 ? (w > 700 ? 0.75 : 1) : w >= 200 ? 1 : w >= 128 ? 1.5 : w >= 96 ? 2 : 2.5);
+  const scale = userScale || (name.startsWith('Glyph_') ? 1 : name.startsWith('Face_') ? 0.75 : w >= 400 ? (w > 700 ? 0.75 : 1) : w >= 200 ? 1 : w >= 128 ? 1.5 : w >= 96 ? 2 : 2.5);
   const cw = Math.round(w * scale), ch = Math.round(h * scale);
   const card = document.createElement('div'); card.className = 'card';
   card.innerHTML = `<div class="name">${name} <span class="size">${w}×${h}</span></div>`;

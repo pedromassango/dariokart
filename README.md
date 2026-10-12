@@ -1,22 +1,23 @@
 # Dariokart
 
-A Mario Kart–inspired 3D kart racer for the web, with online multiplayer, bots at three difficulty levels, and procedural music and sound effects.
+A Super Mario Kart–inspired kart racer for the web, **rendered entirely with Rive**, with online multiplayer, bots at three difficulty levels, and procedural music and sound effects.
 
 <p align="center">
   <img src="docs/media/dariokart-demo.gif" alt="Dariokart gameplay: racing on Dario Circuit with the Rive HUD" width="720">
 </p>
 
 <p align="center">
-  🎬 <a href="docs/media/dariokart-demo.mp4"><b>Watch the full 40-second demo with sound (MP4)</b></a>: menus, a race start with the countdown referee, items, four more courses, the finish and results.
+  🎬 <a href="docs/media/dariokart-demo.mp4"><b>Watch the full demo with sound (MP4)</b></a>: Rive menus, a race start with the countdown referee, items, five more courses, the finish and results.
 </p>
 
 | | |
 |---|---|
-| ![Driver select with Rive portraits](docs/media/shot-select.jpg) | ![Racing on Dario Circuit](docs/media/shot-race.jpg) |
-| ![Bowzer Fortress](docs/media/shot-fortress.jpg) | ![Finishing on Prism Road](docs/media/shot-prism.jpg) |
+| ![Course select, drawn with Rive](docs/media/shot-select.jpg) | ![Racing on Dario Circuit](docs/media/shot-race.jpg) |
+| ![Choco Isle](docs/media/shot-choco.jpg) | ![Finishing on Prism Road](docs/media/shot-prism.jpg) |
 
-- **3D world:** Three.js / WebGL. Courses, karts, characters, item boxes, coins, lighting, shadows, particles.
-- **Rive:** every 2D element: logo, menus, character portraits, HUD (a vector font made of Rive artboards), place badges, item slot, item icons, the countdown referee, the trophy. Some Rive artboards also run *inside* the 3D world as live textures (the animated "?" faces on item boxes, the start-gate banner, the thwomp faces).
+- **Everything is drawn by Rive.** Dariokart has its own small 3D engine whose only rasteriser is the Rive renderer (`@rive-app/canvas-advanced`). It handles a perspective chase camera, near-plane clipping, lighting, fog and depth sorting. Course geometry (road, curbs, block walls, castle battlements, rails, grandstands, hills) is filled as Rive paths. Karts, scenery, items, clouds, signs, ad boards, the crowd and the start banner are Rive artboards with live state machines placed in 3D; the karts pick one of five rotation views by viewing angle, like the SNES original.
+- **UI in Rive too:** menus, HUD (a vector font made of Rive artboards), place badges, item slot, minimap portraits, the countdown referee and the trophy. The only exception is the native text box used for typing names and room codes, needed for mobile keyboards.
+- **Courses modelled on SNES Super Mario Kart** in the style of MK8's retro remakes: Dario Circuit, Donut Meadows, Boo Hollow, Bowzer Fortress, Choco Isle, Shell Beach, Frost Lake and Prism Road.
 - **Realtime:** Firebase Realtime Database (rooms, lobby, race state sync, item events).
 
 ## Run it
@@ -42,7 +43,18 @@ Requires Node 20+. Single-player, Grand Prix, Time Trial and 2P split screen wor
 
 **Bot difficulty:** Easy is 50cc, Medium is 100cc and Hard is 150cc. Higher levels change bot pace, racing line, mistakes, drifting, item use and rubber-banding.
 
-**Courses:** Dario Circuit, Donut Meadows, Boo Hollow, Shell Beach, Bowzer Fortress, Prism Road.
+**Courses (two cups of four, plus a Special Cup with all eight):**
+
+| Cup | Course | SNES inspiration | Features |
+|---|---|---|---|
+| Shroom | Dario Circuit | Mario Circuit | Blue/white curbs, coloured block walls, pipes, grandstand |
+| Shroom | Donut Meadows | Donut Plains | Dirt road around a lake |
+| Shroom | Boo Hollow | Ghost Valley | Railed boardwalk over the void, Boos |
+| Shroom | Bowzer Fortress | Bowser Castle | Lava, thwomps, dash panels |
+| Star | Choco Isle | Choco Island | Mud puddles, piranha plants |
+| Star | Shell Beach | Koopa Beach | Sand and shallow water |
+| Star | Frost Lake | Vanilla Lake | Slippery ice, ice blocks |
+| Star | Prism Road | Rainbow Road | Guard rails, thwomps |
 
 **Drivers:** Dario, Luigio, Pearl, Yoshio, Bowzer, Donkey Jr, Toadie, Koopo. Each has its own speed, acceleration, handling and weight.
 
@@ -108,18 +120,20 @@ Open the game in two different origins, for example two dev servers on different
 | `Glyph_*` (HUD font) | none |
 | `Place_1..8` | `pop` |
 | `ItemSlot`, `Lap`, `Banner` | none |
-| Props: `Pipe`, `Thwomp`, `Tree`, `Bush`, `Palm`, `DeadTree`, `Mole` | `Thwomp` has `slam`; the rest have none |
+| Props: `Pipe`, `Thwomp`, `Tree`, `Bush`, `Palm`, `DeadTree`, `Mole`, `Cactus`, `Lamp`, `Flag`, `Boo`, `Piranha`, `Penguin`, `IceBlock`, `Cloud` | `Thwomp` has `slam`; the rest have none |
+| `TurnSign`, `AdBoard_1..4`, `Crowd` (mapped onto 3D boards) | `TurnSign` has `dir` |
+| `Face_<id>` | `mood` |
 
 ## Code map
 
 | Path | Contents |
 |---|---|
 | `src/game/` | Simulation: `race.ts` (physics, items, laps, places), `ai.ts` (bots), `track.ts` and `tracks.ts` (courses), `session.ts` (race loop, cameras, audio, netcode), `hud3d.ts` (Rive HUD), `input.ts` |
-| `src/three/` | 3D world: `world.ts` (course geometry, scenery, pickups, particles, chase camera), `kartMesh.ts` (karts and drivers), `textures.ts` (procedural textures), `riveTexture.ts` (Rive → WebGL textures) |
+| `src/rive3d/` | The Rive 3D engine: `view.ts` (camera, projection, clipping), `scene.ts` (course solids, Rive art quads, props), `render.ts` (sky, textured ground, lit and fogged polygons, depth-sorted Rive sprites, chase camera) |
 | `src/rive/` | Rive runtime, the drawing layer over the Rive renderer, artboard instances, glyph text |
+| `src/ui/` | `rui.ts` (immediate-mode UI toolkit drawn with Rive: buttons, cards, toggles, sliders; keyboard, mouse, touch and gamepad navigation), `menus.ts` (every screen) |
 | `src/audio/` | Procedural chiptune music (10 original tracks), sound effects, engine sound |
 | `src/net/` | Firebase connection and multiplayer rooms |
-| `src/ui/menus.ts` | Menus, lobby, results, Grand Prix flow |
 | `scripts/simulate.ts` | Headless test that races every course at every difficulty: `npx tsx scripts/simulate.ts` |
 | `scripts/difficulty-report.ts` | Measures bot behaviour per difficulty: `npx tsx scripts/difficulty-report.ts` |
 

@@ -58,9 +58,11 @@ async function cut(track, count, setup) {
   if (setup) await js(setup);
   await frames(count);
 }
-await cut('castle', 100);
-await cut('beach', 90);
-await cut('ghost', 90);
+await cut('castle', 80);
+await cut('choco', 80);
+await cut('ice', 80);
+await cut('beach', 70);
+await cut('ghost', 70);
 // 5) Prism Road: finish the final lap → referee flag, GOAL banner, results
 await cut('rainbow', 60);
 await js(() => {

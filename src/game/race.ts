@@ -231,7 +231,11 @@ export class Race {
     const surf = tr.query(k.x, k.y, this.qi);
     k.surface = surf.surface;
     const offroad = surf.surface === 'offroad' && k.starTimer <= 0 && k.boostTimer <= 0 && k.z <= 0.5;
-    const max = offroad ? maxS * tr.def.theme.offroadSlow : maxS;
+    let max = offroad ? maxS * tr.def.theme.offroadSlow : maxS;
+    // mud puddles slow you down like off-road
+    if (k.starTimer <= 0 && k.boostTimer <= 0 && k.z <= 0.5) {
+      for (const pd of tr.puddles) if (Math.hypot(k.x - pd.x, k.y - pd.y) < pd.r) { max = Math.min(max, maxS * 0.55); break; }
+    }
     const accelRate = this.maxSpeedFor(k) * 0.5 * (0.75 + 0.12 * ch.accel);
 
     // forward/lateral decomposition
@@ -285,7 +289,7 @@ export class Race {
 
       // steering
       const sf = Math.min(1, Math.abs(f) / 35) * Math.sign(f || 1);
-      const turnRate = (2.0 + 0.17 * ch.handling) * (1 - 0.12 * Math.max(0, f) / maxS);
+      const turnRate = (2.0 + 0.17 * ch.handling) * (1 - 0.12 * Math.max(0, f) / maxS) * (0.75 + 0.25 * tr.def.theme.grip);
       let turn: number;
       if (k.drift !== 0) {
         turn = turnRate * (0.62 * k.drift + 0.5 * inp.steer);
@@ -293,7 +297,7 @@ export class Race {
         l *= Math.exp(-1.2 * dt);
       } else {
         turn = turnRate * inp.steer * (k.z > 0 ? 0.6 : 1);
-        l *= Math.exp(-(offroad ? 7 : 9) * dt);
+        l *= Math.exp(-(offroad ? 7 : 9) * tr.def.theme.grip * dt); // ice keeps sideways slide
       }
       k.heading = wrapAngle(k.heading + turn * sf * dt);
     }
@@ -358,7 +362,9 @@ export class Race {
         k.vx *= 0.75; k.vy *= 0.75;
         if (vn > 25 && k.bumpCooldown <= 0) { this.sfx('bump', k); k.bumpCooldown = 0.3; }
       }
-    } else if (s2.surface === 'fall' && k.z <= 0 && k.invulnTimer <= 0) {
+    } else if (s2.surface === 'fall' && k.z <= 0 && k.invulnTimer <= 0 &&
+      Math.abs(s2.lateral) > tr.halfW + tr.def.theme.curbWidth + tr.def.theme.offroadWidth + 6) {
+      // only drop once the whole kart has left the course (not the moment its centre crosses the edge)
       k.fallTimer = 2.6;
       k.drift = 0;
       k.spinTimer = 0;

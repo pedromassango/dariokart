@@ -24,8 +24,9 @@ CI runs the same checks.
 
 | Area | Location |
 |---|---|
-| Simulation (physics, items, laps, AI) | `src/game/` (no DOM/WebGL, so it runs headless in Node) |
-| 3D world | `src/three/` |
+| Simulation (physics, items, laps, AI) | `src/game/` (no DOM, so it runs headless in Node) |
+| Rive 3D engine (world renderer) | `src/rive3d/` |
+| Rive UI toolkit and menus | `src/ui/` |
 | Rive runtime, HUD text, artboard instances | `src/rive/` |
 | `.riv` generator (art is code) | `scripts/rivgen/`; preview every artboard at `/riv-preview.html` |
 | Audio (procedural, no audio files) | `src/audio/` |

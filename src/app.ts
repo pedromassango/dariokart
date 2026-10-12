@@ -1,14 +1,10 @@
-import * as THREE from 'three';
 import { loadRive, loadAssetFile, type RiveRuntime, type WrappedRenderer } from './rive/runtime';
-import { Draw, argb } from './rive/draw';
+import { Draw } from './rive/draw';
 import { RiveAssets } from './rive/assets';
 import { loadGlyphs } from './rive/riveText';
 import { RaceSession, type SessionSetup } from './game/session';
 import { TRACKS } from './game/tracks';
 import { CHARACTERS } from './game/characters';
-import { RiveTexture } from './three/riveTexture';
-import { setRiveTextures } from './three/riveTextures';
-import { setMaxAnisotropy } from './three/textures';
 
 export interface Widget {
   canvas: HTMLCanvasElement;
@@ -18,27 +14,26 @@ export interface Widget {
 }
 
 /**
- * Owns the Rive runtime, the Three.js WebGL renderer (3D world), the Rive overlay canvas (HUD),
- * the main loop, Rive-powered DOM widgets and Rive textures used inside the 3D scene.
+ * Owns the Rive runtime, the single game canvas (the 3D world and the HUD are both drawn by the
+ * Rive renderer), the main loop and Rive-powered DOM widgets.
  */
 export class App {
   rive!: RiveRuntime;
   assets!: RiveAssets;
-  canvas: HTMLCanvasElement; // Rive overlay
-  gl!: THREE.WebGLRenderer;
-  private glCanvas: HTMLCanvasElement;
+  canvas: HTMLCanvasElement;
   private renderer!: WrappedRenderer;
   private draw!: Draw;
   session: RaceSession | null = null;
   private attract: RaceSession | null = null;
   private widgets = new Set<Widget>();
-  private riveTex: RiveTexture[] = [];
   private last = 0;
   private t = 0;
   private dpr = 1;
   private cssW = 1;
   private cssH = 1;
   onFrame: ((dt: number) => void) | null = null;
+  /** menus / overlays drawn with Rive on top of the race (set by Menus) */
+  overlay: ((d: Draw, w: number, h: number, t: number) => void) | null = null;
   /** dev/testing: when true the loop renders but does not advance the simulation */
   manualStep = false;
   /** capture/testing: when true, the loop only runs frames requested via requestStep(), each exactly 1/30 s */
@@ -50,9 +45,8 @@ export class App {
     return new Promise((resolve) => this.stepQueue.push(resolve));
   }
 
-  constructor(canvas: HTMLCanvasElement, glCanvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    this.glCanvas = glCanvas;
   }
 
   async init() {
@@ -62,43 +56,11 @@ export class App {
     this.renderer = this.rive.makeRenderer(this.canvas);
     this.draw = new Draw(this.rive, this.renderer);
 
-    this.gl = new THREE.WebGLRenderer({ canvas: this.glCanvas, antialias: true, powerPreference: 'high-performance' });
-    this.gl.shadowMap.enabled = true;
-    this.gl.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.gl.toneMapping = THREE.ACESFilmicToneMapping;
-    this.gl.toneMappingExposure = 1.05;
-    this.gl.outputColorSpace = THREE.SRGBColorSpace;
-    setMaxAnisotropy(Math.min(8, this.gl.capabilities.getMaxAnisotropy()));
-    this.makeRiveTextures();
-
     window.addEventListener('resize', () => this.resize());
     this.resize();
     this.newAttract();
     this.last = performance.now();
     this.rive.requestAnimationFrame(this.loop);
-  }
-
-  /** Rive artboards rendered into textures for the 3D world. */
-  private makeRiveTextures() {
-    const a = this.assets;
-    const mk = (w: number, h: number, paint: (d: Draw, w: number, h: number, t: number) => void) => {
-      const t = new RiveTexture(this.rive, w, h, paint);
-      this.riveTex.push(t);
-      return t;
-    };
-    const itemBox = mk(256, 256, (d, w, h) => {
-      if (!a.draw(d, 'tex_panel', 'ItemPanel', w / 2, h / 2, w, { anchorY: 0.5 })) d.rect(0, 0, w, h, argb('#ffd040'));
-    });
-    const banner = a.has('Banner') || a.has('Logo') ? mk(1024, 160, (d, w, h) => {
-      if (!a.draw(d, 'tex_banner', 'Banner', w / 2, h / 2, w, { anchorY: 0.5 })) {
-        d.rect(0, 0, w, h, argb('#c81818'));
-        a.draw(d, 'tex_logo', 'Logo', w / 2, h / 2, h * 2.6, { anchorY: 0.5 });
-      }
-    }) : null;
-    const thwomp = a.has('Thwomp') ? mk(256, 256, (d, w, h, t) => {
-      a.draw(d, 'tex_thwomp', 'Thwomp', w / 2, h * 0.98, w * 0.95, { anchorY: 1, inputs: { slam: Math.sin(t * 1.3) > 0.6 } });
-    }) : null;
-    setRiveTextures({ itemBox, banner, thwomp });
   }
 
   private newAttract() {
@@ -115,15 +77,12 @@ export class App {
   resize() {
     this.cssW = window.innerWidth;
     this.cssH = window.innerHeight;
-    this.dpr = Math.min(2, window.devicePixelRatio || 1);
-    for (const c of [this.canvas, this.glCanvas]) {
-      c.style.width = this.cssW + 'px';
-      c.style.height = this.cssH + 'px';
-    }
+    // the whole world is vector-rendered every frame: cap the backing resolution for a steady frame rate
+    this.dpr = Math.min(1.25, window.devicePixelRatio || 1);
+    this.canvas.style.width = this.cssW + 'px';
+    this.canvas.style.height = this.cssH + 'px';
     this.canvas.width = Math.floor(this.cssW * this.dpr);
     this.canvas.height = Math.floor(this.cssH * this.dpr);
-    this.gl?.setPixelRatio(this.dpr);
-    this.gl?.setSize(this.cssW, this.cssH, false);
     document.documentElement.style.setProperty('--game-w', this.cssW + 'px');
     document.documentElement.style.setProperty('--game-h', this.cssH + 'px');
     document.documentElement.style.setProperty('--game-scale', String(Math.min(this.cssW / 512, this.cssH / 448)));
@@ -156,11 +115,21 @@ export class App {
   }
 
   private loop = (now: number) => {
+    try {
+      this.frame(now);
+    } catch (e) {
+      // never let one bad frame stop the game loop
+      console.error('[dariokart] frame error', e);
+    }
+    this.rive.requestAnimationFrame(this.loop);
+  };
+
+  private frame(now: number) {
     let dt = Math.min(0.1, Math.max(0, (now - this.last) / 1000));
     this.last = now;
     if (this.stepMode) {
       const done = this.stepQueue.shift();
-      if (!done) { this.rive.requestAnimationFrame(this.loop); return; }
+      if (!done) return;
       dt = 1 / 30;
       // resolve once this frame's Rive draw calls have been flushed
       requestAnimationFrame(() => done());
@@ -180,18 +149,13 @@ export class App {
       if (s === this.attract && s.race.phase === 'done') this.newAttract();
     }
 
-    for (const t of this.riveTex) t.update(this.t);
-
-    // 3D world
-    const gs = this.gl.getDrawingBufferSize(new THREE.Vector2());
-    if (s) s.render3D(this.gl, gs.x / this.dpr, gs.y / this.dpr);
-
-    // Rive overlay (HUD)
+    // the frame: 3D world + HUD, all drawn through the Rive renderer
     const d = this.draw;
     this.renderer.clear();
     d.save();
     d.scale(this.dpr);
-    if (s) s.renderOverlay(d, this.assets, this.cssW, this.cssH);
+    if (s) s.render(d, this.assets, this.cssW, this.cssH);
+    this.overlay?.(d, this.cssW, this.cssH, this.t);
     d.restore();
     this.renderer.flush?.();
 
@@ -207,6 +171,5 @@ export class App {
       w.draw.restore();
       w.renderer.flush?.();
     }
-    this.rive.requestAnimationFrame(this.loop);
-  };
+  }
 }

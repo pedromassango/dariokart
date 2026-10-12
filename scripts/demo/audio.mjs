@@ -20,7 +20,7 @@ const b64 = await page.evaluate(async () => {
   const rec = new MediaRecorder(dest.stream, { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 160000 });
   const chunks = [];
   rec.ondataavailable = (e) => chunks.push(e.data);
-  const T = 39.9;
+  const T = 43.3;
   // timeline (seconds) matching record.mjs
   const ev = [
     [0.0, () => A.playMusic('title')],
@@ -41,13 +41,16 @@ const b64 = await page.evaluate(async () => {
     [21.9, () => A.playMusic('castle')],
     [23.0, () => A.playSfx('driftStart')], [23.1, () => A.setEngine({ running: true, speed01: 0.8, onRoad: true, drifting: true, boosting: false })],
     [24.2, () => { A.playSfx('miniTurbo'); A.setEngine({ running: true, speed01: 0.95, onRoad: true, drifting: false, boosting: true }); }],
-    [25.2, () => { A.playMusic('beach'); A.setEngine({ running: true, speed01: 0.85, onRoad: true, drifting: false, boosting: false }); }],
-    [26.5, () => A.playSfx('coin')],
-    [28.2, () => A.playMusic('ghost')],
-    [29.5, () => A.playSfx('bananaHit', { volume: 0.5 })],
-    [31.2, () => { A.playMusic('rainbow'); A.setMusicTempo(1.15); A.playSfx('finalLap'); }],
-    [34.2, () => { A.playSfx('finishWin'); A.setEngine({ running: false, speed01: 0, onRoad: true, drifting: false, boosting: false }); }],
-    [35.4, () => { A.setMusicTempo(1); A.playMusic('results'); }],
+    [24.5, () => { A.playMusic('plains'); A.setEngine({ running: true, speed01: 0.85, onRoad: true, drifting: false, boosting: false }); }],
+    [26.0, () => A.playSfx('coin')],
+    [27.2, () => A.playMusic('beach')],
+    [28.4, () => A.playSfx('itemBox')],
+    [29.9, () => A.playMusic('beach')],
+    [32.2, () => A.playMusic('ghost')],
+    [33.4, () => A.playSfx('bananaHit', { volume: 0.5 })],
+    [34.5, () => { A.playMusic('rainbow'); A.setMusicTempo(1.15); A.playSfx('finalLap'); }],
+    [37.5, () => { A.playSfx('finishWin'); A.setEngine({ running: false, speed01: 0, onRoad: true, drifting: false, boosting: false }); }],
+    [38.8, () => { A.setMusicTempo(1); A.playMusic('results'); }],
   ];
   rec.start(250);
   const t0 = performance.now();

@@ -5,8 +5,7 @@ import { audio } from './audio/audio';
 
 async function boot() {
   const canvas = document.getElementById('game') as HTMLCanvasElement;
-  const glCanvas = document.getElementById('game3d') as HTMLCanvasElement;
-  const app = new App(canvas, glCanvas);
+  const app = new App(canvas);
   await app.init();
   const menus = new Menus(app);
   // unlock audio on first gesture (browsers require it)

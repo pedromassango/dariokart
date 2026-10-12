@@ -9,9 +9,8 @@ import type { Viewport } from './projector';
 import type { Banner } from './hud';
 import { drawHud3D, drawReferee3D, drawCourseTitle } from './hud3d';
 import { riveText, riveTextWidth } from '../rive/riveText';
-import * as THREE from 'three';
-import { World3D, ChaseCam } from '../three/world';
-import { riveTextures } from '../three/riveTextures';
+import { ChaseCam, renderWorld, updateEffects, clearEffects } from '../rive3d/render';
+import { View } from '../rive3d/view';
 import { input } from './input';
 import { audio, type MusicName } from '../audio/audio';
 
@@ -60,7 +59,6 @@ export class RaceSession {
   readonly race: Race;
   readonly setup: SessionSetup;
   private cams: ChaseCam[] = [];
-  private world: World3D | null = null;
   private locals: Kart[] = [];
   private banners: (Banner | null)[] = [null, null];
   private time = 0;
@@ -89,6 +87,7 @@ export class RaceSession {
     });
     this.locals = this.locals.filter(Boolean);
     for (let i = 0; i < Math.max(1, this.locals.length); i++) this.cams.push(new ChaseCam());
+    clearEffects();
     input.split = this.locals.length > 1;
     this.musicName = setup.track.music as MusicName;
     this.started = !setup.net;
@@ -129,10 +128,10 @@ export class RaceSession {
     // cameras
     this.cams.forEach((c, i) => {
       const k = this.locals[i] ?? this.leader();
-      c.fovBoost += ((k.boostTimer > 0 ? 1 : 0) - c.fovBoost) * Math.min(1, dt * 4);
+      c.boost += ((k.boostTimer > 0 ? 1 : 0) - c.boost) * Math.min(1, dt * 4);
       c.follow(k, dt, race.phase === 'intro' && !this.isAttract ? race.phaseTime / 2.4 : null);
     });
-    this.world?.update(dt, this.time, this.locals[0] ?? this.leader());
+    updateEffects(race, dt);
 
     this.handleEvents();
     if (net) this.sendNet(net, dt);
@@ -286,37 +285,18 @@ export class RaceSession {
     return [{ x: 0, y: 0, w, h }];
   }
 
-  /** 3D pass (Three.js) — w/h in device pixels */
-  render3D(gl: THREE.WebGLRenderer, w: number, h: number) {
-    if (!this.world) {
-      this.world = new World3D(this.race, riveTextures());
-      this.world.setEnvironment(gl);
-      this.world.update(0, this.time, this.locals[0] ?? this.leader()); // place karts immediately
-    }
-    const views = this.views(w, h);
-    gl.setScissorTest(views.length > 1);
-    views.forEach((vp, i) => {
-      const cam = this.cams[i] ?? this.cams[0];
-      cam.cam.aspect = vp.w / vp.h;
-      cam.cam.updateProjectionMatrix();
-      // WebGL viewport origin is bottom-left
-      const y = h - vp.y - vp.h;
-      gl.setViewport(vp.x, y, vp.w, vp.h);
-      gl.setScissor(vp.x, y, vp.w, vp.h);
-      this.world!.prepareView(cam.cam, this.locals[i] ?? this.leader());
-      gl.render(this.world!.scene, cam.cam);
-    });
-    gl.setScissorTest(false);
-  }
-
-  /** Rive overlay pass (HUD, referee, titles) — w/h in CSS pixels */
   private assetsRef: RiveAssets | null = null;
 
-  renderOverlay(d: Draw, assets: RiveAssets, w: number, h: number) {
+  /** Renders the whole frame with Rive: the 3D world for each view, then the HUD — w/h in CSS pixels */
+  render(d: Draw, assets: RiveAssets, w: number, h: number) {
     this.assetsRef = assets;
-    if (this.isAttract) return;
     const race = this.race;
     const views = this.views(w, h);
+    views.forEach((vp, i) => {
+      const k = this.locals[i] ?? this.leader();
+      renderWorld(d, assets, race, this.cams[i] ?? this.cams[0], vp, { focus: k, time: this.time, nameTags: !this.isAttract });
+    });
+    if (this.isAttract) return;
     const split = views.length > 1;
     views.forEach((vp, i) => {
       const k = this.locals[i];
@@ -332,14 +312,15 @@ export class RaceSession {
   }
 
   /** names above other human racers (online) */
+  private tagView = new View();
   private drawNameTags(d: Draw, vp: Viewport, cam: ChaseCam) {
-    const v = new THREE.Vector3();
+    const v = this.tagView;
+    v.setup(cam, vp.w, vp.h);
     for (const k of this.race.karts) {
       if (k.control !== 'remote' || k.id.startsWith('bot_')) continue;
-      v.set(k.x, k.z + 15, k.y).project(cam.cam);
-      if (v.z > 1 || v.z < -1) continue;
-      const x = vp.x + (v.x * 0.5 + 0.5) * vp.w, y = vp.y + (-v.y * 0.5 + 0.5) * vp.h;
-      const dist = Math.hypot(k.x - cam.cam.position.x, k.y - cam.cam.position.z);
+      if (!v.project(k.x, k.y, k.z + 17)) continue;
+      const x = vp.x + v.sx, y = vp.y + v.sy;
+      const dist = v.depth;
       if (dist > 400) continue;
       const label = k.name.slice(0, 10);
       const th = Math.max(16, Math.min(28, 4200 / Math.max(60, dist)));
@@ -350,7 +331,5 @@ export class RaceSession {
   }
 
   dispose() {
-    this.world?.dispose();
-    this.world = null;
   }
 }

@@ -1,4 +1,4 @@
-import type { TrackDef, DecoKind } from './tracks';
+import type { TrackDef, PropKind, ObstacleKind } from './tracks';
 import { mulberry32 } from './util';
 
 export const SAMPLE_SPACING = 8;
@@ -18,12 +18,12 @@ export interface Placed {
   y: number;
 }
 export interface Deco extends Placed {
-  kind: DecoKind;
+  kind: PropKind;
   scale: number;
 }
 export interface Obstacle extends Placed {
   r: number;
-  kind: 'pipe' | 'thwomp';
+  kind: ObstacleKind;
 }
 export interface DashPanel extends Placed {
   dirX: number;
@@ -47,6 +47,7 @@ export class Track {
   readonly coins: Placed[] = [];
   readonly decos: Deco[] = [];
   readonly obstacles: Obstacle[] = [];
+  readonly puddles: (Placed & { r: number })[] = [];
   readonly dashPanels: DashPanel[] = [];
   readonly minX: number; readonly minY: number; readonly maxX: number; readonly maxY: number;
   /** curvature-based recommended speed factor per sample (0.55..1) for AI */
@@ -135,10 +136,14 @@ export class Track {
       const lat = (rnd() * 1.4 - 0.7) * this.halfW;
       for (let k = 0; k < 4; k++) this.coins.push(this.pointAt((start + k * 2) % n, lat));
     }
-    for (const [f, lat] of def.obstacles ?? []) {
+    for (const [f, lat, kind] of def.obstacles ?? []) {
       const i = Math.floor(f * n) % n;
       const p = this.pointAt(i, lat * this.halfW);
-      this.obstacles.push({ ...p, r: 7, kind: def.id === 'castle' ? 'thwomp' : 'pipe' });
+      this.obstacles.push({ ...p, r: kind === 'iceblock' ? 8 : kind === 'piranha' ? 5 : 7, kind });
+    }
+    for (const [f, lat, r] of def.puddles ?? []) {
+      const i = Math.floor(f * n) % n;
+      this.puddles.push({ ...this.pointAt(i, lat * this.halfW), r });
     }
     for (const [f, lat] of def.dash ?? []) {
       const i = Math.floor(f * n) % n;
@@ -146,18 +151,22 @@ export class Track {
       this.dashPanels.push({ ...p, dirX: this.tx[i], dirY: this.ty[i], index: i });
     }
     // decorations outside the drivable area
-    const decor = def.theme.decor;
-    const off = this.halfW + def.theme.offroadWidth;
-    for (let i = 0; i < n; i += 5) {
+    const props = def.theme.props;
+    const off = this.halfW + def.theme.curbWidth + def.theme.offroadWidth;
+    const inLake = (x: number, y: number) => (def.lakes ?? []).some((l) => pointInPoly(x, y, l.points));
+    for (let i = 0; i < n; i += 4) {
       for (const side of [-1, 1]) {
-        if (rnd() < 0.45) continue;
-        const dist = off + 18 + rnd() * 90;
+        if (rnd() < 0.4) continue;
+        const kind = props[Math.floor(rnd() * props.length)];
+        // lamps/flags line the barrier; boos hover close to the planks; scenery sits further out
+        const near = kind === 'lamp' || kind === 'flag';
+        const dist = near ? off + 8 + rnd() * 4 : kind === 'boo' ? off + 14 + rnd() * 30 : kind === 'deadtree' ? off + 55 + rnd() * 120 : off + 18 + rnd() * 100;
+        if (near && i % 12 !== 0) continue;
         const p = this.pointAt(i, side * dist);
-        // keep away from any other part of the track
         const s = this.query(p.x, p.y);
-        if (Math.abs(s.lateral) < off + 14) continue;
-        const kind = decor[Math.floor(rnd() * decor.length)];
-        this.decos.push({ ...p, kind, scale: 0.8 + rnd() * 0.6 });
+        if (Math.abs(s.lateral) < off + 6) continue; // keep clear of every part of the course
+        if (inLake(p.x, p.y) && kind !== 'boo') continue;
+        this.decos.push({ ...p, kind, scale: near ? 1 : 0.8 + rnd() * 0.6 });
       }
     }
   }
@@ -206,7 +215,8 @@ export class Track {
     if (a <= this.halfW) surface = 'road';
     else if (a <= this.halfW + th.curbWidth) surface = 'curb';
     else if (a <= this.halfW + th.curbWidth + th.offroadWidth) surface = 'offroad';
-    else surface = th.edge;
+    // guard rails (Boo Hollow, Prism Road) block like walls; elsewhere the edge is a drop
+    else surface = th.walls === 'rail' ? 'wall' : th.edge;
     const o = out ?? ({} as SurfaceInfo);
     o.surface = surface; o.index = i; o.lateral = lat; o.nx = this.nx[i]; o.ny = this.ny[i];
     return o;
@@ -264,4 +274,13 @@ function centripetal(p0: number[], p1: number[], p2: number[], p3: number[], t: 
   const b1 = lerp(a1, a2, t0, t2), b2 = lerp(a2, a3, t1, t3);
   const c = lerp(b1, b2, t1, t2);
   return [c[0], c[1]];
+}
+
+export function pointInPoly(x: number, y: number, pts: [number, number][]): boolean {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, yi] = pts[i], [xj, yj] = pts[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
 }

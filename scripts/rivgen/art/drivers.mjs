@@ -77,7 +77,7 @@ const C = {
       { k: 'eye', a: 32, e: -0.85, r: 0.75, w: 0.22, h: 0.32, iris: null },
       { k: 'eye', a: -32, e: -0.85, r: 0.75, w: 0.22, h: 0.32, iris: null },
       { k: 'vol', a: 0, e: 0.48, r: 0.6, w: 0.85, h: 0.42, fill: '#ffffff' }, // white jaw
-      { k: 'vol', a: 0, e: 0.12, r: 1.0, w: 0.72, h: 0.55, fill: '#6bd13a', shine: true }, // snout
+      { k: 'vol', a: 0, e: 0.12, r: 1.0, w: 0.72, h: 0.55, fill: '#6bd13a', shine: true, snout: true }, // snout
       { k: 'flat', a: 10, e: 0.05, r: 1.55, w: 0.07, h: 0.11, fill: OUT, o: 0 },
       { k: 'flat', a: -10, e: 0.05, r: 1.55, w: 0.07, h: 0.11, fill: OUT, o: 0 },
     ],
@@ -89,7 +89,7 @@ const C = {
       { k: 'horn', a: 60, e: -0.75, r: 0.85, fill: '#fff4d6' },
       { k: 'horn', a: -60, e: -0.75, r: 0.85, fill: '#fff4d6' },
       { k: 'vol', a: 180, e: -0.5, r: 0.55, w: 0.8, h: 0.6, fill: '#ff5a2a', spiky: true }, // hair
-      { k: 'vol', a: 0, e: 0.38, r: 0.85, w: 0.8, h: 0.5, fill: '#ffe7a0', shine: false }, // muzzle
+      { k: 'vol', a: 0, e: 0.38, r: 0.85, w: 0.8, h: 0.5, fill: '#ffe7a0', shine: false, snout: true }, // muzzle
       { k: 'flat', a: 12, e: 0.22, r: 1.45, w: 0.07, h: 0.06, fill: OUT, o: 0 },
       { k: 'flat', a: -12, e: 0.22, r: 1.45, w: 0.07, h: 0.06, fill: OUT, o: 0 },
       { k: 'flat', a: 0, e: 0.62, r: 1.25, w: 0.3, h: 0.1, fill: '#7a1a2a', o: 1.5 },
@@ -108,7 +108,7 @@ const C = {
       { k: 'flat', a: 0, e: -0.1, r: 0.92, w: 0.62, h: 0.42, fill: '#e8b080', o: 1.5 }, // face mask
       { k: 'eye', a: 18, e: -0.15, w: 0.15, h: 0.22, iris: '#4a2a10' },
       { k: 'eye', a: -18, e: -0.15, w: 0.15, h: 0.22, iris: '#4a2a10' },
-      { k: 'vol', a: 0, e: 0.45, r: 0.85, w: 0.6, h: 0.42, fill: '#e8b080' }, // muzzle
+      { k: 'vol', a: 0, e: 0.45, r: 0.85, w: 0.6, h: 0.42, fill: '#e8b080', snout: true }, // muzzle
       { k: 'flat', a: 0, e: 0.62, r: 1.3, w: 0.3, h: 0.1, fill: '#7a1a2a', o: 1.5 },
       { k: 'flat', a: 10, e: 0.36, r: 1.38, w: 0.05, h: 0.06, fill: OUT, o: 0 },
       { k: 'flat', a: -10, e: 0.36, r: 1.38, w: 0.05, h: 0.06, fill: OUT, o: 0 },
@@ -129,7 +129,7 @@ const C = {
     head: { sx: 0.9, sy: 1.12, color: '#ffd23f' },
     shirt: '#ffd23f', gloves: '#ffffff', shell: '#2fae3c',
     feats: [
-      { k: 'vol', a: 0, e: 0.38, r: 0.82, w: 0.72, h: 0.45, fill: '#ffd23f', shine: true }, // snout
+      { k: 'vol', a: 0, e: 0.38, r: 0.82, w: 0.72, h: 0.45, fill: '#ffd23f', shine: true, snout: true }, // snout
       { k: 'flat', a: 10, e: 0.3, r: 1.5, w: 0.06, h: 0.08, fill: OUT, o: 0 },
       { k: 'flat', a: -10, e: 0.3, r: 1.5, w: 0.06, h: 0.08, fill: OUT, o: 0 },
       { k: 'flat', a: 0, e: 0.7, r: 1.0, w: 0.26, h: 0.1, fill: '#9e1a2a', o: 1.5 },
@@ -142,7 +142,8 @@ const C = {
 // ---------------------------------------------------------------- feature renderers
 function proj(f, phi, cx, cy, R, sx) {
   const t = (phi + f.a) * deg;
-  const r = f.r ?? 1;
+  // snouts/muzzles push forward when seen side-on so profiles read clearly
+  const r = (f.r ?? 1) + (f.snout ? 0.4 * Math.abs(Math.sin(t)) : 0);
   return { x: cx + r * R * sx * Math.sin(t), y: cy + (f.e ?? 0) * R, depth: -Math.cos(t), side: Math.sin(t) };
 }
 

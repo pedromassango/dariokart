@@ -9,26 +9,11 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='6' y='26' width='52' height='20' rx='6' fill='%23e52521'/%3E%3Ccircle cx='18' cy='48' r='9' fill='%23222'/%3E%3Ccircle cx='46' cy='48' r='9' fill='%23222'/%3E%3Ccircle cx='30' cy='18' r='11' fill='%23ffc890'/%3E%3Cpath d='M18 16a12 12 0 0 1 24 0z' fill='%23e52521'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@700;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel="stylesheet" />
 </head>
 <body>
   <div id="stage">
-    <canvas id="game3d" aria-label="Dariokart 3D view"></canvas>
-    <canvas id="game" aria-hidden="true"></canvas>
-    <div id="ui"></div>
-    <div id="touch" hidden>
-      <div class="tpad left">
-        <button data-k="left" aria-label="Steer left">◀</button>
-        <button data-k="right" aria-label="Steer right">▶</button>
-      </div>
-      <div class="tpad right">
-        <button data-k="item" class="small" aria-label="Use item">ITEM</button>
-        <button data-k="hop" class="small" aria-label="Hop / drift">HOP</button>
-        <button data-k="brake" aria-label="Brake">B</button>
-        <button data-k="accel" class="gas" aria-label="Accelerate">A</button>
-      </div>
-      <button id="tpause" aria-label="Pause">II</button>
-    </div>
+    <canvas id="game" aria-label="Dariokart"></canvas>
   </div>
   <div id="boot">LOADING…</div>
   <script type="module" src="/src/main.ts"></script>

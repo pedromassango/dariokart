@@ -9,6 +9,9 @@ import { buildTrophy } from './art/trophy.mjs';
 import { buildProps } from './art/props.mjs';
 import { buildGlyphs, buildPlaces, buildItemSlot, buildLap, buildBanner } from './art/hud.mjs';
 import { CHAR_IDS } from './contract.mjs';
+import { buildTurnSign, buildCrowd } from './art/world.mjs';
+import { buildProps2 } from './art/props2.mjs';
+import { buildFaces } from './art/faces.mjs';
 
 export function buildAssets({ only } = {}) {
   const file = new RivFile();
@@ -26,5 +29,9 @@ export function buildAssets({ only } = {}) {
   if (want('ItemSlot')) buildItemSlot(file);
   if (want('Lap')) buildLap(file);
   if (want('Banner')) buildBanner(file);
+  if (want('TurnSign')) buildTurnSign(file);
+  if (want('Face_')) buildFaces(file, CHAR_IDS);
+  if (want('Crowd')) buildCrowd(file);
+  if (['Cloud', 'AdBoard_', 'Flag', 'Lamp', 'Cactus', 'Boo', 'Piranha', 'Penguin', 'IceBlock'].some(want)) buildProps2(file);
   return file;
 }

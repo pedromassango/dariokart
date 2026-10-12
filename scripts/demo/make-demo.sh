@@ -10,10 +10,10 @@ mkdir -p docs/media
 ffmpeg -y -loglevel error -framerate 30 -i "$TMP/frames/f%05d.jpg" -i "$TMP/audio.webm" \
   -c:v libx264 -preset veryslow -crf 30 -tune animation -pix_fmt yuv420p -movflags +faststart \
   -c:a aac -b:a 128k -af "loudnorm=I=-16:TP=-1.5:LRA=11" -shortest docs/media/dariokart-demo.mp4
-ffmpeg -y -loglevel error -start_number 440 -framerate 30 -i "$TMP/frames/f%05d.jpg" -frames:v 180 \
+ffmpeg -y -loglevel error -start_number 480 -framerate 30 -i "$TMP/frames/f%05d.jpg" -frames:v 170 \
   -vf "fps=12,scale=560:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=none:diff_mode=rectangle" \
   docs/media/dariokart-demo.gif
-for pair in 00200:select 00500:race 00730:fortress 01050:prism; do
+for pair in 00290:select 00560:race 00780:choco 01140:prism; do
   ffmpeg -y -loglevel error -i "$TMP/frames/f${pair%%:*}.jpg" -vf scale=960:-1 -q:v 4 "docs/media/shot-${pair##*:}.jpg"
 done
 rm -rf "$TMP"

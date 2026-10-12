@@ -4,6 +4,7 @@
 import { shape, node, pivot, rect, rectC, ellipse, circle, poly, svg, linear, radial, OUT, ol, alpha, lighten, darken, sineKeys, track, blob, shine } from './common.mjs';
 import { KART_COLORS } from './characters.mjs';
 import { driver } from './drivers.mjs';
+import { rearDriver } from './rear.mjs';
 
 const TYRE = '#2a2530';
 const GROUND = 92;
@@ -55,6 +56,22 @@ function steeringWheel(cx, cy, w, h) {
 }
 function hand(x, y, color) { return blob({}, circle(x, y, 3.6), color, 2); }
 
+function rearNode(ctx, v, cx, turn) {
+  return pivot(cx, HEAD_Y + R * 1.9, { name: 'drv' + v }, rearDriver(ctx.id, cx, HEAD_Y, R, turn));
+}
+function plate(ctx, x, y, w = 20) {
+  return [
+    blob({}, rect(x - w / 2, y, w, 8, 2.5), linear(0, y, 0, y + 8, [[0, '#ffffff'], [1, '#d8d4e4']]), 2),
+    shape({}, svg(letterPath(INITIAL[ctx.id], x, y + 4)), null, { color: '#2a2030', width: 1.6, cap: 'round', join: 'round' }),
+  ];
+}
+function pipeEnd(x, y) {
+  return [
+    blob({}, rect(x - 3.5, y - 6, 7, 7, 2), linear(x - 3.5, 0, x + 3.5, 0, [[0, '#f0eaf8'], [1, '#8a8294']]), 2),
+    blob({}, ellipse(x, y + 1, 4.5, 3), '#c8c0d0', 2),
+    shape({}, ellipse(x, y + 1.3, 2.4, 1.5), OUT),
+  ];
+}
 function driverNode(ctx, v, phi, cx) {
   const d = driver(ctx.id, phi, cx, HEAD_Y, R, 'v' + v);
   return { d, node: pivot(cx, HEAD_Y + R * 1.9, { name: 'drv' + v }, [...d.torso, ...d.head]) };
@@ -63,20 +80,20 @@ function driverNode(ctx, v, phi, cx) {
 // ---------------------------------------------------------------- views
 function view0(ctx) { // rear
   const kc = ctx.kc; const cx = 48;
-  const { node: drv } = driverNode(ctx, 0, 0, cx);
   return [
     tyreBlock(ctx, 'v0fl', 18, 66, 12, 14), tyreBlock(ctx, 'v0fr', 78, 66, 12, 14),
     blob({}, svg('M26 58 L70 58 L80 74 L16 74 Z'), linear(0, 58, 0, 74, [[0, lighten(kc, 0.25)], [1, darken(kc, 0.1)]]), 2.5),
-    drv,
-    blob({}, svg('M33 62 C33 56 37 54 48 54 C59 54 63 56 63 62 L63 68 L33 68 Z'), linear(0, 54, 0, 68, [[0, '#4a4452'], [1, '#2a2530']]), 2.5),
-    flame(ctx, 'v0flameL', 40, 86), flame(ctx, 'v0flameR', 56, 86),
+    rearNode(ctx, 0, cx, 0),
+    blob({}, svg('M33 64 C33 59 37 57 48 57 C59 57 63 59 63 64 L63 68 L33 68 Z'), linear(0, 57, 0, 68, [[0, '#4a4452'], [1, '#2a2530']]), 2.5),
+    flame(ctx, 'v0flameL', 25, 87), flame(ctx, 'v0flameR', 71, 87),
     blob({}, svg('M14 70 C14 66 17 64 22 64 L74 64 C79 64 82 66 82 70 L82 80 C82 84 79 86 74 86 L22 86 C17 86 14 84 14 80 Z'), linear(0, 64, 0, 86, [[0, lighten(kc, 0.3)], [0.45, kc], [1, darken(kc, 0.3)]]), 3),
-    shine([rect(20, 66.5, 56, 2.5, 1.2)], 0.45),
-    blob({}, rect(36, 68, 24, 11, 3), linear(0, 68, 0, 79, [[0, '#c8c0d0'], [1, '#7a7284']]), 2),
-    shape({}, [rect(39, 70.5, 18, 1.5), rect(39, 73.5, 18, 1.5), rect(39, 76.5, 18, 1.5)], '#4a4452'),
-    blob({}, [rect(19, 70, 9, 5, 2), rect(68, 70, 9, 5, 2)], '#ff3b3b', 2),
-    blob({}, [ellipse(40, 86, 4, 2.6), ellipse(56, 86, 4, 2.6)], '#c8c0d0', 2),
-    shape({}, [ellipse(40, 86.3, 2.1, 1.3), ellipse(56, 86.3, 2.1, 1.3)], OUT),
+    shine([rect(20, 65.8, 56, 2, 1)], 0.45),
+    // full-width tail-light bar
+    blob({}, rect(19, 68.5, 58, 5, 2.5), linear(0, 68.5, 0, 73.5, [[0, '#ff7a6a'], [1, '#c81010']]), 2),
+    shape({}, rect(22, 69.3, 52, 1.4, 0.7), alpha('#ffffff', 0.6)),
+    ...plate(ctx, 48, 74),
+    blob({}, rect(16, 82, 64, 5, 2.5), linear(0, 82, 0, 87, [[0, '#6a6474'], [1, '#2a2530']]), 2),
+    ...pipeEnd(25, 85), ...pipeEnd(71, 85),
     tyreBlock(ctx, 'v0rl', 11, GROUND, 18, 30), tyreBlock(ctx, 'v0rr', 85, GROUND, 18, 30),
   ];
 }
@@ -122,24 +139,24 @@ function view2(ctx) { // right profile
 
 function view1(ctx) { // rear three-quarter (heading up-right; rear + right side)
   const kc = ctx.kc; const cx = 42;
-  const { node: drv } = driverNode(ctx, 1, 45, cx);
+  const drv = rearNode(ctx, 1, cx, 1);
   return [
     tyreBlock(ctx, 'v1fr', 84, 82, 11, 20),
     // deck (top surface of the tub)
     blob({}, poly([[14, 68], [56, 66], [86, 58], [78, 50], [28, 54]], true, 3), linear(0, 50, 0, 68, [[0, lighten(kc, 0.35)], [1, kc]]), 2.5),
     drv,
     blob({}, svg('M26 64 C26 57 30 54 40 54 C48 54 52 57 52 62 L52 68 L26 69 Z'), linear(0, 54, 0, 69, [[0, '#4a4452'], [1, '#2a2530']]), 2.5),
-    flame(ctx, 'v1flameL', 24, 87, 15), flame(ctx, 'v1flameR', 38, 87, 15),
+    flame(ctx, 'v1flameL', 18, 88, 15), flame(ctx, 'v1flameR', 50, 88, 15),
     // right side face
     blob({}, poly([[56, 66], [86, 58], [89, 62], [88, 76], [57, 88]], true, 2), linear(56, 0, 89, 0, [[0, darken(kc, 0.05)], [1, lighten(kc, 0.25)]]), 3),
     shine([poly([[60, 69], [84, 62], [84, 64.5], [60, 71.5]])], 0.35),
     // rear face
     blob({}, poly([[11, 68], [56, 66], [57, 88], [12, 88]], true, 3), linear(0, 66, 0, 88, [[0, lighten(kc, 0.2)], [0.5, darken(kc, 0.05)], [1, darken(kc, 0.35)]]), 3),
     shine([rect(16, 69.5, 36, 2.2, 1.1)], 0.4),
-    blob({}, [rect(15, 73, 7, 5, 2), rect(46, 72.5, 7, 5, 2)], '#ff3b3b', 2),
-    blob({}, rect(25, 73, 17, 9, 2.5), linear(0, 73, 0, 82, [[0, '#c8c0d0'], [1, '#7a7284']]), 2),
-    blob({}, [ellipse(24, 87, 3.5, 2.4), ellipse(38, 87, 3.5, 2.4)], '#c8c0d0', 2),
-    shape({}, [ellipse(24, 87.3, 1.8, 1.2), ellipse(38, 87.3, 1.8, 1.2)], OUT),
+    blob({}, rect(15, 71.5, 39, 4.5, 2.2), linear(0, 71.5, 0, 76, [[0, '#ff7a6a'], [1, '#c81010']]), 2),
+    ...plate(ctx, 34, 76.5, 18),
+    blob({}, rect(13, 84, 43, 4, 2), linear(0, 84, 0, 88, [[0, '#6a6474'], [1, '#2a2530']]), 2),
+    ...pipeEnd(18, 86), ...pipeEnd(50, 86),
     tyreBlock(ctx, 'v1rr', 62, 91, 13, 26),
     tyreBlock(ctx, 'v1rl', 9, GROUND, 15, 28),
   ];

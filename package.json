@@ -1,0 +1,25 @@
+{
+  "name": "dariokart",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dariokart - a Super Mario Kart inspired multiplayer racer rendered with Rive",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run riv && tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "riv": "node scripts/rivgen/build.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rive-app/canvas-advanced": "^2.44.2",
+    "firebase": "^13.0.0",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.170.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4"
+  }
+}

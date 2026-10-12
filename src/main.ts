@@ -20,7 +20,7 @@ async function boot() {
   if (import.meta.env.DEV) {
     // debugging hooks: advance the simulation deterministically from the console
     (window as unknown as Record<string, unknown>).dariokart = {
-      app, menus,
+      app, menus, audio,
       adv: (sec: number) => { const s = app.session; if (!s) return 'no session'; for (let i = 0; i < sec * 60; i++) s.update(1 / 60); return `${s.race.phase} ${s.race.phaseTime.toFixed(2)}`; },
     };
   }

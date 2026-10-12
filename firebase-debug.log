@@ -1,56 +1,49 @@
-[debug] [2026-10-12T21:25:53.031Z] ----------------------------------------------------------------------
-[debug] [2026-10-12T21:25:53.032Z] Command:       /opt/homebrew/Cellar/node/26.7.0/bin/node /Users/pedromassango/.npm/_npx/ba4f1959e38407b5/node_modules/.bin/firebase emulators:start --only database,auth --project demo-dariokart
-[debug] [2026-10-12T21:25:53.032Z] CLI Version:   15.33.0
-[debug] [2026-10-12T21:25:53.032Z] Platform:      darwin
-[debug] [2026-10-12T21:25:53.032Z] Node Version:  v26.7.0
-[debug] [2026-10-12T21:25:53.032Z] Detected Agent: claude-code_2-1-296_agent
-[debug] [2026-10-12T21:25:53.032Z] Time:          Mon Oct 12 2026 23:25:53 GMT+0200 (Central European Summer Time)
-[debug] [2026-10-12T21:25:53.032Z] ----------------------------------------------------------------------
+[debug] [2026-10-12T21:33:42.731Z] ----------------------------------------------------------------------
+[debug] [2026-10-12T21:33:42.732Z] Command:       /opt/homebrew/Cellar/node/26.7.0/bin/node /Users/pedromassango/.npm/_npx/ba4f1959e38407b5/node_modules/.bin/firebase emulators:start --only database,auth --project demo-dariokart
+[debug] [2026-10-12T21:33:42.733Z] CLI Version:   15.33.0
+[debug] [2026-10-12T21:33:42.733Z] Platform:      darwin
+[debug] [2026-10-12T21:33:42.733Z] Node Version:  v26.7.0
+[debug] [2026-10-12T21:33:42.733Z] Detected Agent: claude-code_2-1-296_agent
+[debug] [2026-10-12T21:33:42.733Z] Time:          Mon Oct 12 2026 23:33:42 GMT+0200 (Central European Summer Time)
+[debug] [2026-10-12T21:33:42.733Z] ----------------------------------------------------------------------
 [debug] 
-[debug] [2026-10-12T21:25:53.037Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
-[debug] [2026-10-12T21:25:53.561Z] openjdk version "21.0.11" 2026-04-21
+[debug] [2026-10-12T21:33:43.228Z] openjdk version "21.0.11" 2026-04-21
 
-[debug] [2026-10-12T21:25:53.561Z] OpenJDK Runtime Environment JBR-21.0.11+10-1163.116-nomod (build 21.0.11+10-b1163.116)
+[debug] [2026-10-12T21:33:43.228Z] OpenJDK Runtime Environment JBR-21.0.11+10-1163.116-nomod (build 21.0.11+10-b1163.116)
 OpenJDK 64-Bit Server VM JBR-21.0.11+10-1163.116-nomod (build 21.0.11+10-b1163.116, mixed mode, sharing)
 
-[debug] [2026-10-12T21:25:53.567Z] Parsed Java major version: 21
+[debug] [2026-10-12T21:33:43.235Z] Parsed Java major version: 21
 [info] i  emulators: Starting emulators: auth, database {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth, database"}}
 [info] i  emulators: Detected demo project ID "demo-dariokart", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail. {"metadata":{"emulator":{"name":"hub"},"message":"Detected demo project ID \"demo-dariokart\", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail."}}
-[debug] [2026-10-12T21:25:53.804Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
-[debug] [2026-10-12T21:25:53.804Z] [auth] Authentication Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
-[debug] [2026-10-12T21:25:53.804Z] [database] Database Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
-[debug] [2026-10-12T21:25:53.804Z] assigned listening specs for emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"database":[{"address":"127.0.0.1","family":"IPv4","port":9000}]},"metadata":{"message":"assigned listening specs for emulators"}}
-[debug] [2026-10-12T21:25:53.806Z] Write emulator hub locator at /var/folders/tb/5ppd3wf13hv6l_h_q28ntybc0000gn/T/hub-demo-dariokart.json
-[debug] [2026-10-12T21:25:53.810Z] No OAuth tokens found
-[debug] [2026-10-12T21:25:53.810Z] No OAuth tokens found
-[debug] [2026-10-12T21:25:53.810Z] Unable to refresh auth: not yet authenticated.
-[debug] [2026-10-12T21:25:53.810Z] Failed to retrieve default database instance: Failed to get Firebase project demo-dariokart. Please make sure the project exists and your account has permission to access it. {"metadata":{"emulator":{"name":"database"},"message":"Failed to retrieve default database instance: Failed to get Firebase project demo-dariokart. Please make sure the project exists and your account has permission to access it."}}
-[debug] [2026-10-12T21:25:53.810Z] database rules config:  [{"instance":"demo-dariokart-default-rtdb","rules":"/Users/pedromassango/dev/projects/dariokart/database.rules.json"}]
-[info] i  database: downloading firebase-database-emulator-v4.11.2.jar... {"metadata":{"emulator":{"name":"database"},"message":"downloading firebase-database-emulator-v4.11.2.jar..."}}
-[debug] [2026-10-12T21:25:53.812Z] >>> [apiv2][query] GET https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.11.2.jar 
-[debug] [2026-10-12T21:25:53.944Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
-[debug] [2026-10-12T21:25:53.944Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
-[debug] [2026-10-12T21:25:54.055Z] <<< [apiv2][status] GET https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.11.2.jar 200
-[debug] [2026-10-12T21:25:54.055Z] <<< [apiv2][body] GET https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.11.2.jar [stream]
-[debug] [2026-10-12T21:25:58.501Z] Ignoring unsupported arg: projectId {"metadata":{"emulator":{"name":"database"},"message":"Ignoring unsupported arg: projectId"}}
-[debug] [2026-10-12T21:25:58.501Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"database"},"message":"Ignoring unsupported arg: auto_download"}}
-[debug] [2026-10-12T21:25:58.501Z] Ignoring unsupported arg: rules {"metadata":{"emulator":{"name":"database"},"message":"Ignoring unsupported arg: rules"}}
-[debug] [2026-10-12T21:25:58.501Z] Starting Database Emulator with command {"binary":"java","args":["-Duser.language=en","-jar","/Users/pedromassango/.cache/firebase/emulators/firebase-database-emulator-v4.11.2.jar","--host","127.0.0.1","--port",9000,"--single_project_mode","Warning"],"optionalArgs":["port","host","functions_emulator_port","functions_emulator_host","single_project_mode"],"joinArgs":false,"shell":false,"port":9000} {"metadata":{"emulator":{"name":"database"},"message":"Starting Database Emulator with command {\"binary\":\"java\",\"args\":[\"-Duser.language=en\",\"-jar\",\"/Users/pedromassango/.cache/firebase/emulators/firebase-database-emulator-v4.11.2.jar\",\"--host\",\"127.0.0.1\",\"--port\",9000,\"--single_project_mode\",\"Warning\"],\"optionalArgs\":[\"port\",\"host\",\"functions_emulator_port\",\"functions_emulator_host\",\"single_project_mode\"],\"joinArgs\":false,\"shell\":false,\"port\":9000}"}}
+[debug] [2026-10-12T21:33:43.473Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-10-12T21:33:43.473Z] [auth] Authentication Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-10-12T21:33:43.473Z] [database] Database Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-10-12T21:33:43.473Z] assigned listening specs for emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"database":[{"address":"127.0.0.1","family":"IPv4","port":9000}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-10-12T21:33:43.475Z] Write emulator hub locator at /var/folders/tb/5ppd3wf13hv6l_h_q28ntybc0000gn/T/hub-demo-dariokart.json
+[debug] [2026-10-12T21:33:43.480Z] No OAuth tokens found
+[debug] [2026-10-12T21:33:43.480Z] No OAuth tokens found
+[debug] [2026-10-12T21:33:43.480Z] Unable to refresh auth: not yet authenticated.
+[debug] [2026-10-12T21:33:43.480Z] Failed to retrieve default database instance: Failed to get Firebase project demo-dariokart. Please make sure the project exists and your account has permission to access it. {"metadata":{"emulator":{"name":"database"},"message":"Failed to retrieve default database instance: Failed to get Firebase project demo-dariokart. Please make sure the project exists and your account has permission to access it."}}
+[debug] [2026-10-12T21:33:43.480Z] database rules config:  [{"instance":"demo-dariokart-default-rtdb","rules":"/Users/pedromassango/dev/projects/dariokart/database.rules.json"}]
+[debug] [2026-10-12T21:33:43.481Z] Ignoring unsupported arg: projectId {"metadata":{"emulator":{"name":"database"},"message":"Ignoring unsupported arg: projectId"}}
+[debug] [2026-10-12T21:33:43.481Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"database"},"message":"Ignoring unsupported arg: auto_download"}}
+[debug] [2026-10-12T21:33:43.481Z] Ignoring unsupported arg: rules {"metadata":{"emulator":{"name":"database"},"message":"Ignoring unsupported arg: rules"}}
+[debug] [2026-10-12T21:33:43.481Z] Starting Database Emulator with command {"binary":"java","args":["-Duser.language=en","-jar","/Users/pedromassango/.cache/firebase/emulators/firebase-database-emulator-v4.11.2.jar","--host","127.0.0.1","--port",9000,"--single_project_mode","Warning"],"optionalArgs":["port","host","functions_emulator_port","functions_emulator_host","single_project_mode"],"joinArgs":false,"shell":false,"port":9000} {"metadata":{"emulator":{"name":"database"},"message":"Starting Database Emulator with command {\"binary\":\"java\",\"args\":[\"-Duser.language=en\",\"-jar\",\"/Users/pedromassango/.cache/firebase/emulators/firebase-database-emulator-v4.11.2.jar\",\"--host\",\"127.0.0.1\",\"--port\",9000,\"--single_project_mode\",\"Warning\"],\"optionalArgs\":[\"port\",\"host\",\"functions_emulator_port\",\"functions_emulator_host\",\"single_project_mode\"],\"joinArgs\":false,\"shell\":false,\"port\":9000}"}}
 [info] i  database: Database Emulator logging to database-debug.log {"metadata":{"emulator":{"name":"database"},"message":"Database Emulator logging to database-debug.log"}}
-[debug] [2026-10-12T21:25:58.878Z] 23:25:58.877 [NamespaceSystem-akka.actor.default-dispatcher-4] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
- {"metadata":{"emulator":{"name":"database"},"message":"23:25:58.877 [NamespaceSystem-akka.actor.default-dispatcher-4] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started\n"}}
-[debug] [2026-10-12T21:25:58.926Z] 23:25:58.926 [main] INFO com.firebase.server.forge.App$ - Listening at 127.0.0.1:9000
- {"metadata":{"emulator":{"name":"database"},"message":"23:25:58.926 [main] INFO com.firebase.server.forge.App$ - Listening at 127.0.0.1:9000\n"}}
+[debug] [2026-10-12T21:33:43.885Z] 23:33:43.884 [NamespaceSystem-akka.actor.default-dispatcher-4] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
+ {"metadata":{"emulator":{"name":"database"},"message":"23:33:43.884 [NamespaceSystem-akka.actor.default-dispatcher-4] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started\n"}}
+[debug] [2026-10-12T21:33:43.945Z] 23:33:43.944 [main] INFO com.firebase.server.forge.App$ - Listening at 127.0.0.1:9000
+ {"metadata":{"emulator":{"name":"database"},"message":"23:33:43.944 [main] INFO com.firebase.server.forge.App$ - Listening at 127.0.0.1:9000\n"}}
 [warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
-[debug] [2026-10-12T21:26:00.697Z] >>> [apiv2][query] PUT http://127.0.0.1:9000/.settings/rules.json ns=demo-dariokart-default-rtdb
-[debug] [2026-10-12T21:26:00.698Z] >>> [apiv2][body] PUT http://127.0.0.1:9000/.settings/rules.json "{\n  \"rules\": {\n    \"rooms\": {\n      \"$code\": {\n        \".read\": \"auth != null\",\n        \".write\": \"auth != null && (!data.exists() || data.child('players').child(auth.uid).exists() || newData.child('players').child(auth.uid).exists())\",\n        \".validate\": \"$code.length === 4\",\n        \"players\": {\n          \"$uid\": {\n            \".write\": \"auth != null && auth.uid === $uid\",\n            \".validate\": \"newData.hasChildren(['name', 'char', 'joined']) && newData.child('name').isString() && newData.child('name').val().length <= 12\"\n          }\n        },\n        \"states\": {\n          \"$uid\": {\n            \".write\": \"auth != null && auth.uid === $uid\"\n          }\n        },\n        \"events\": {\n          \"$ev\": {\n            \".write\": \"auth != null && newData.child('from').val() === auth.uid\"\n          }\n        }\n      }\n    }\n  }\n}\n"
-[debug] [2026-10-12T21:26:00.782Z] 23:26:00.782 [NamespaceSystem-akka.actor.default-dispatcher-4] INFO com.firebase.core.namespace.NamespaceActor - demo-dariokart-default-rtdb successfully activated FBKV (SurveyIdle(0)) wait: 36ms, init: 0ms
- {"metadata":{"emulator":{"name":"database"},"message":"23:26:00.782 [NamespaceSystem-akka.actor.default-dispatcher-4] INFO com.firebase.core.namespace.NamespaceActor - demo-dariokart-default-rtdb successfully activated FBKV (SurveyIdle(0)) wait: 36ms, init: 0ms\n"}}
-[debug] [2026-10-12T21:26:00.811Z] 23:26:00.811 [NamespaceSystem-blocking-namespace-operation-dispatcher-6] INFO com.firebase.core.namespace.StateManager - Namespace demo-dariokart-default-rtdb status Active to Active
- {"metadata":{"emulator":{"name":"database"},"message":"23:26:00.811 [NamespaceSystem-blocking-namespace-operation-dispatcher-6] INFO com.firebase.core.namespace.StateManager - Namespace demo-dariokart-default-rtdb status Active to Active\n"}}
-[debug] [2026-10-12T21:26:00.825Z] <<< [apiv2][status] PUT http://127.0.0.1:9000/.settings/rules.json 200
-[debug] [2026-10-12T21:26:00.825Z] <<< [apiv2][body] PUT http://127.0.0.1:9000/.settings/rules.json {"status":"ok"}
-[debug] [2026-10-12T21:26:00.827Z] Could not find VSCode notification endpoint: TypeError: fetch failed. If you are not running the Firebase SQL Connect VSCode extension, this is expected and not an issue.
+[debug] [2026-10-12T21:33:45.675Z] >>> [apiv2][query] PUT http://127.0.0.1:9000/.settings/rules.json ns=demo-dariokart-default-rtdb
+[debug] [2026-10-12T21:33:45.675Z] >>> [apiv2][body] PUT http://127.0.0.1:9000/.settings/rules.json "{\n  \"rules\": {\n    \"rooms\": {\n      \"$code\": {\n        \".read\": \"auth != null\",\n        \".write\": \"auth != null && (!data.exists() || data.child('players').child(auth.uid).exists() || newData.child('players').child(auth.uid).exists())\",\n        \".validate\": \"$code.length === 4\",\n        \"players\": {\n          \"$uid\": {\n            \".write\": \"auth != null && auth.uid === $uid\",\n            \".validate\": \"newData.hasChildren(['name', 'char', 'joined']) && newData.child('name').isString() && newData.child('name').val().length <= 12\"\n          }\n        },\n        \"states\": {\n          \"$uid\": {\n            \".write\": \"auth != null && auth.uid === $uid\"\n          }\n        },\n        \"events\": {\n          \"$ev\": {\n            \".write\": \"auth != null && newData.child('from').val() === auth.uid\"\n          }\n        }\n      }\n    }\n  }\n}\n"
+[debug] [2026-10-12T21:33:45.780Z] 23:33:45.780 [NamespaceSystem-akka.actor.default-dispatcher-4] INFO com.firebase.core.namespace.NamespaceActor - demo-dariokart-default-rtdb successfully activated FBKV (SurveyIdle(0)) wait: 46ms, init: 0ms
+ {"metadata":{"emulator":{"name":"database"},"message":"23:33:45.780 [NamespaceSystem-akka.actor.default-dispatcher-4] INFO com.firebase.core.namespace.NamespaceActor - demo-dariokart-default-rtdb successfully activated FBKV (SurveyIdle(0)) wait: 46ms, init: 0ms\n"}}
+[debug] [2026-10-12T21:33:45.821Z] 23:33:45.821 [NamespaceSystem-blocking-namespace-operation-dispatcher-6] INFO com.firebase.core.namespace.StateManager - Namespace demo-dariokart-default-rtdb status Active to Active
+ {"metadata":{"emulator":{"name":"database"},"message":"23:33:45.821 [NamespaceSystem-blocking-namespace-operation-dispatcher-6] INFO com.firebase.core.namespace.StateManager - Namespace demo-dariokart-default-rtdb status Active to Active\n"}}
+[debug] [2026-10-12T21:33:45.832Z] <<< [apiv2][status] PUT http://127.0.0.1:9000/.settings/rules.json 200
+[debug] [2026-10-12T21:33:45.832Z] <<< [apiv2][body] PUT http://127.0.0.1:9000/.settings/rules.json {"status":"ok"}
+[debug] [2026-10-12T21:33:45.835Z] Could not find VSCode notification endpoint: TypeError: fetch failed. If you are not running the Firebase SQL Connect VSCode extension, this is expected and not an issue.
 [info] 
 ┌─────────────────────────────────────────────────────────────┐
 │ ✔  All emulators ready! It is now safe to connect your app. │
@@ -68,10 +61,12 @@ OpenJDK 64-Bit Server VM JBR-21.0.11+10-1163.116-nomod (build 21.0.11+10-b1163.1
 
 Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
  
-[debug] [2026-10-12T21:26:20.489Z] 23:26:20.488 [FirebaseWorkerPool-1-3] WARN com.firebase.core.persistence.backend.dummy.EmulatorMetadataPersistence - Multiple projectIds are not recommended in single project mode. Requested 
+[debug] [2026-10-12T21:34:12.475Z] 23:34:12.475 [FirebaseWorkerPool-1-3] WARN com.firebase.core.persistence.backend.dummy.EmulatorMetadataPersistence - Multiple projectIds are not recommended in single project mode. Requested 
 namespace demo-dariokart, but the emulator is configured for demo-dariokart-default-rtdb. To 
 opt-out of single project mode add/set the singleProjectMode: false property in 
 the firebase.json emulators config. 
- {"metadata":{"emulator":{"name":"database"},"message":"23:26:20.488 [FirebaseWorkerPool-1-3] WARN com.firebase.core.persistence.backend.dummy.EmulatorMetadataPersistence - Multiple projectIds are not recommended in single project mode. Requested \nnamespace demo-dariokart, but the emulator is configured for demo-dariokart-default-rtdb. To \nopt-out of single project mode add/set the singleProjectMode: false property in \nthe firebase.json emulators config. \n"}}
-[debug] [2026-10-12T21:26:20.493Z] 23:26:20.493 [NamespaceSystem-akka.actor.default-dispatcher-11] INFO com.firebase.core.namespace.NamespaceActor - demo-dariokart successfully activated FBKV (SurveyIdle(0)) wait: 2ms, init: 0ms
- {"metadata":{"emulator":{"name":"database"},"message":"23:26:20.493 [NamespaceSystem-akka.actor.default-dispatcher-11] INFO com.firebase.core.namespace.NamespaceActor - demo-dariokart successfully activated FBKV (SurveyIdle(0)) wait: 2ms, init: 0ms\n"}}
+ {"metadata":{"emulator":{"name":"database"},"message":"23:34:12.475 [FirebaseWorkerPool-1-3] WARN com.firebase.core.persistence.backend.dummy.EmulatorMetadataPersistence - Multiple projectIds are not recommended in single project mode. Requested \nnamespace demo-dariokart, but the emulator is configured for demo-dariokart-default-rtdb. To \nopt-out of single project mode add/set the singleProjectMode: false property in \nthe firebase.json emulators config. \n"}}
+[debug] [2026-10-12T21:34:12.479Z] 23:34:12.479 [NamespaceSystem-akka.actor.default-dispatcher-8] INFO com.firebase.core.namespace.NamespaceActor - demo-dariokart successfully activated FBKV (SurveyIdle(0)) wait: 2ms, init: 0ms
+ {"metadata":{"emulator":{"name":"database"},"message":"23:34:12.479 [NamespaceSystem-akka.actor.default-dispatcher-8] INFO com.firebase.core.namespace.NamespaceActor - demo-dariokart successfully activated FBKV (SurveyIdle(0)) wait: 2ms, init: 0ms\n"}}
+[debug] [2026-10-12T21:35:50.523Z] 23:35:50.522 [NamespaceSystem-akka.actor.default-dispatcher-8] INFO com.firebase.core.namespace.DeadLetterResponder - Message DataPush(List(rooms, RLV7),com.firebase.util.data.SparseMergeRenderable@1720619377) meant for other actor akka://NamespaceSystem/user/demo-dariokart/$b from akka://NamespaceSystem/deadLetters went to deadletter actor
+ {"metadata":{"emulator":{"name":"database"},"message":"23:35:50.522 [NamespaceSystem-akka.actor.default-dispatcher-8] INFO com.firebase.core.namespace.DeadLetterResponder - Message DataPush(List(rooms, RLV7),com.firebase.util.data.SparseMergeRenderable@1720619377) meant for other actor akka://NamespaceSystem/user/demo-dariokart/$b from akka://NamespaceSystem/deadLetters went to deadletter actor\n"}}

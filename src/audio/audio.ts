@@ -142,19 +142,28 @@ class AudioEngine {
         if (!Ctor) return;
         this.ctx = new Ctor({ latencyHint: 'interactive' });
         this.buildGraph();
+        // whenever the context actually starts running (possibly on a later gesture), start what was queued
+        this.ctx.addEventListener('statechange', () => this.onRunning());
       }
-      if (this.ctx.state !== 'running') await this.ctx.resume();
-      if (this.ctx.state === 'running') {
-        if (this.pendingMusic) {
-          const p = this.pendingMusic;
-          this.pendingMusic = null;
-          this.startMusic(p.name, p.loop, 0.3);
-        }
-        this.applyEngine();
+      // resume() stays pending forever when the triggering event wasn't a real user activation
+      // (e.g. Escape/Shift or a background tab) — never let one stuck attempt block later gestures.
+      if (this.ctx.state !== 'running') {
+        await Promise.race([this.ctx.resume().catch(() => undefined), new Promise((r) => setTimeout(r, 500))]);
       }
+      this.onRunning();
     } catch {
       /* audio unavailable – stay silent */
     }
+  }
+
+  private onRunning(): void {
+    if (!this.ctx || this.ctx.state !== 'running') return;
+    if (this.pendingMusic) {
+      const p = this.pendingMusic;
+      this.pendingMusic = null;
+      this.startMusic(p.name, p.loop, 0.3);
+    }
+    this.applyEngine();
   }
 
   private buildGraph(): void {
@@ -311,6 +320,15 @@ class AudioEngine {
   }
 
   /** Currently playing (or queued) music track, if any. */
+  /** dev/testing: an analyser tapped off the master bus (null before unlock) */
+  debugTap(): { analyser: AnalyserNode; state: AudioContextState } | null {
+    if (!this.ctx || !this.master) return null;
+    const analyser = this.ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    this.master.connect(analyser);
+    return { analyser, state: this.ctx.state };
+  }
+
   getMusic(): MusicName | null {
     return this.currentName ?? this.pendingMusic?.name ?? null;
   }

@@ -312,6 +312,7 @@ export class RaceSession {
     const split = views.length > 1;
     views.forEach((vp, i) => {
       const k = this.locals[i];
+      this.drawNameTags(d, vp, this.cams[i] ?? this.cams[0]);
       drawReferee3D(d, assets, race, k, vp, 'r' + i);
       drawHud3D(d, assets, race, k, vp, this.time, this.banners[i], split, 'h' + i);
       if (race.phase === 'intro') {
@@ -320,6 +321,23 @@ export class RaceSession {
       }
     });
     if (split) d.rect(0, h / 2 - 2, w, 4, argb('#000000'));
+  }
+
+  /** names above other human racers (online) */
+  private drawNameTags(d: Draw, vp: Viewport, cam: ChaseCam) {
+    const v = new THREE.Vector3();
+    for (const k of this.race.karts) {
+      if (k.control !== 'remote' || k.id.startsWith('bot_')) continue;
+      v.set(k.x, k.z + 15, k.y).project(cam.cam);
+      if (v.z > 1 || v.z < -1) continue;
+      const x = vp.x + (v.x * 0.5 + 0.5) * vp.w, y = vp.y + (-v.y * 0.5 + 0.5) * vp.h;
+      const dist = Math.hypot(k.x - cam.cam.position.x, k.y - cam.cam.position.z);
+      if (dist > 400) continue;
+      const label = k.name.slice(0, 10);
+      const w = label.length * 12 + 16;
+      d.roundRect(x - w / 2, y - 22, w, 22, 11, argb('#141a40', 0.75), argb(k.char.color), 2);
+      d.text(label, x, y - 17, 2, argb('#ffffff'), { align: 0.5 });
+    }
   }
 
   dispose() {

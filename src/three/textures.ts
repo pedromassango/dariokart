@@ -143,10 +143,10 @@ export const tex = {
     }
   }),
   rainbow: () => canvasTex('rainbow', 64, 512, (ctx, w, h) => {
-    const cols = ['#ff4060', '#ff9030', '#ffe040', '#50e060', '#40a0ff', '#a060ff'];
+    const cols = ['#ff1040', '#ff7a00', '#ffd400', '#18c840', '#1070ff', '#8a2cff'];
     cols.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(0, (i * h) / cols.length, w, h / cols.length + 1); });
-    ctx.fillStyle = 'rgba(255,255,255,0.25)';
-    for (let i = 0; i < 6; i++) ctx.fillRect(0, (i * h) / 6, w, 4);
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    for (let i = 0; i < 6; i++) ctx.fillRect(0, (i * h) / 6, w, 3);
   }),
   curb: (a: string, b: string) => canvasTex('curb' + a + b, 64, 128, (ctx, w, h) => {
     ctx.fillStyle = a; ctx.fillRect(0, 0, w, h / 2);

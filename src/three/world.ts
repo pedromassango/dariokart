@@ -270,7 +270,7 @@ export class World3D {
     // road
     const rt = look.road().clone(); rt.needsUpdate = true;
     const rm = new THREE.MeshStandardMaterial({ map: rt, color: look.roadColor, roughness: tr.def.id === 'rainbow' ? 0.3 : 0.85 });
-    if (look.roadEmissive) { rm.emissive = new THREE.Color('#ffffff'); rm.emissiveMap = rt; rm.emissiveIntensity = 0.55; rm.transparent = true; rm.opacity = 0.92; }
+    if (look.roadEmissive) { rm.emissive = new THREE.Color('#ffffff'); rm.emissiveMap = rt; rm.emissiveIntensity = 0.32; rm.roughness = 0.2; rm.metalness = 0.15; rm.transparent = true; rm.opacity = 0.95; }
     const across = tr.def.id === 'rainbow' ? 1 : (hw * 2) / 36;
     add(this.ribbon(tr, -hw, hw, 0.06, tr.def.id === 'rainbow' ? 60 : 36, across), rm);
 

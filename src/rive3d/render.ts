@@ -38,6 +38,7 @@ const list: Drawable[] = [];
 // ---------------------------------------------------------------- particles (visual only)
 export interface Spark { x: number; y: number; z: number; vx: number; vy: number; vz: number; life: number; max: number; color: number; size: number; grow: number }
 const sparks: Spark[] = [];
+const hitSeen = new WeakMap<Kart, boolean>();
 function spark(s: Omit<Spark, 'max'>) { if (sparks.length < 500) sparks.push({ ...s, max: s.life }); }
 
 export function updateEffects(race: Race, dt: number) {
@@ -53,7 +54,21 @@ export function updateEffects(race: Race, dt: number) {
     }
     if (k.boostTimer > 0 && Math.random() < dt * 40) spark({ x: bx, y: by, z: 3, vx: -cx * 30, vy: -cy * 30, vz: 6, life: 0.25, color: argb('#ffb050', 0.9), size: 1.3, grow: 3 });
     if (k.starTimer > 0 && Math.random() < dt * 40) spark({ x: k.x + (Math.random() - 0.5) * 10, y: k.y + (Math.random() - 0.5) * 10, z: 4 + Math.random() * 10, vx: 0, vy: 0, vz: 14, life: 0.4, color: argb(['#ffe040', '#ff60c0', '#60e0ff', '#80ff80'][Math.floor(Math.random() * 4)]), size: 0.55, grow: 0 });
-    if (k.spinTimer > 0 && Math.random() < dt * 25) spark({ x: k.x, y: k.y, z: 8, vx: (Math.random() - 0.5) * 40, vy: (Math.random() - 0.5) * 40, vz: 28, life: 0.5, color: argb('#ffffff'), size: 1.1, grow: 1 });
+    if (k.spinTimer > 0 && Math.random() < dt * 25) spark({ x: k.x, y: k.y, z: 8, vx: (Math.random() - 0.5) * 40, vy: (Math.random() - 0.5) * 40, vz: 28, life: 0.5, color: argb('#fff0b0'), size: 0.6, grow: 0.5 });
+    // impact burst the moment a kart is hit
+    const wasHit = hitSeen.get(k) ?? false, isHit = k.spinTimer > 0 || k.squishTimer > 0;
+    if (isHit && !wasHit) {
+      for (let j = 0; j < 18; j++) {
+        const a = Math.random() * Math.PI * 2, v = 30 + Math.random() * 45;
+        spark({ x: k.x, y: k.y, z: 5, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vz: 20 + Math.random() * 40, life: 0.45 + Math.random() * 0.3, color: argb(['#ffd040', '#ff8020', '#ffffff'][j % 3]), size: 0.75, grow: 0 });
+      }
+    }
+    hitSeen.set(k, isHit);
+  }
+  // shells leave a short glowing trail so they read at speed
+  for (const e of race.items) {
+    if (e.type === 'banana' || Math.random() > dt * 45) continue;
+    spark({ x: e.x + (Math.random() - 0.5) * 2, y: e.y + (Math.random() - 0.5) * 2, z: e.z + 2.5, vx: -e.vx * 0.05, vy: -e.vy * 0.05, vz: 4, life: 0.3, color: argb(e.type === 'redShell' ? '#ff5030' : '#50ff70'), size: 0.7, grow: -1.2 });
   }
   for (let i = sparks.length - 1; i >= 0; i--) {
     const p = sparks[i];
@@ -61,7 +76,7 @@ export function updateEffects(race: Race, dt: number) {
     if (p.life <= 0) { sparks.splice(i, 1); continue; }
     p.vz -= 60 * dt;
     p.x += p.vx * dt; p.y += p.vy * dt; p.z = Math.max(0.3, p.z + p.vz * dt);
-    p.size += p.grow * dt;
+    p.size = Math.max(0.05, p.size + p.grow * dt);
   }
 }
 export function clearEffects() { sparks.length = 0; }

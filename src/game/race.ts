@@ -430,6 +430,8 @@ export class Race {
     } else {
       if (k.spinTimer > 0) return false;
       k.spinTimer = kind === 'tumble' ? 1.6 : 1.15;
+      // shell / star hits throw the kart up into the air
+      if (kind === 'tumble' && k.z <= 0.5 && k.vz <= 0) { k.vz = 85; k.z = 0.01; }
       this.sfx(kind === 'tumble' ? 'shellHit' : 'spinOut', k);
     }
     k.drift = 0;

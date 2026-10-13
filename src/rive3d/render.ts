@@ -52,7 +52,7 @@ export function updateEffects(race: Race, dt: number) {
       spark({ x: bx, y: by, z: 1, vx: (Math.random() - 0.5) * 18, vy: (Math.random() - 0.5) * 18, vz: 10, life: 0.55, color: argb(race.track.def.theme.bandSpeck[1], 0.85), size: 1.6, grow: 4 });
     }
     if (k.boostTimer > 0 && Math.random() < dt * 40) spark({ x: bx, y: by, z: 3, vx: -cx * 30, vy: -cy * 30, vz: 6, life: 0.25, color: argb('#ffb050', 0.9), size: 1.3, grow: 3 });
-    if (k.starTimer > 0 && Math.random() < dt * 40) spark({ x: k.x + (Math.random() - 0.5) * 10, y: k.y + (Math.random() - 0.5) * 10, z: 4 + Math.random() * 10, vx: 0, vy: 0, vz: 14, life: 0.4, color: argb(['#ffff60', '#ffffff', '#60ffff'][Math.floor(Math.random() * 3)]), size: 0.9, grow: 0 });
+    if (k.starTimer > 0 && Math.random() < dt * 40) spark({ x: k.x + (Math.random() - 0.5) * 10, y: k.y + (Math.random() - 0.5) * 10, z: 4 + Math.random() * 10, vx: 0, vy: 0, vz: 14, life: 0.4, color: argb(['#ffe040', '#ff60c0', '#60e0ff', '#80ff80'][Math.floor(Math.random() * 4)]), size: 0.55, grow: 0 });
     if (k.spinTimer > 0 && Math.random() < dt * 25) spark({ x: k.x, y: k.y, z: 8, vx: (Math.random() - 0.5) * 40, vy: (Math.random() - 0.5) * 40, vz: 28, life: 0.5, color: argb('#ffffff'), size: 1.1, grow: 1 });
   }
   for (let i = sparks.length - 1; i >= 0; i--) {

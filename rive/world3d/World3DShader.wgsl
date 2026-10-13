@@ -352,7 +352,7 @@ fn fs_world(i: VOut) -> @location(0) vec4<f32> {
     base = vec3<f32>(0.05, 0.05, 0.05);
     rough = 0.15;
   } else if (m == 246) {
-    emissive = lin(i.tint.rgb) * 3.0;
+    emissive = lin(i.tint.rgb) * 1.5;
     base = vec3<f32>(0.0, 0.0, 0.0);
   } else if (m == 239) {
     // foliage: clumpy leaf normals, colour variation, per-plant hue
@@ -438,9 +438,12 @@ fn fs_world(i: VOut) -> @location(0) vec4<f32> {
     emissive = vec3<f32>(sp, sp, sp) * 0.6;
   }
 
-  // flash (star power / respawn)
-  base = mix(base, vec3<f32>(1.0, 1.0, 1.0), i.tint.a * 0.7);
-  emissive = emissive + vec3<f32>(1.0, 0.95, 0.7) * i.tint.a * 0.8;
+  // star power: the kart shimmers through rainbow colours (bands climbing the model) instead of washing out to white
+  if (i.tint.a > 0.0) {
+    let sc = lin(hsv(fract(t * 2.2 + i.world.z * 0.06 + (wp.x - wp.y) * 0.015)));
+    base = mix(base, sc, 0.45);
+    emissive = emissive + sc * (0.25 + 0.3 * i.tint.a);
+  }
 
   let L = sunDir();
   let H = normalize(L + V);

@@ -23,7 +23,13 @@ type Artboard = ReturnType<RiveFile['artboardByName']>;
 type VMI = ReturnType<ReturnType<RiveFile['viewModelByName']>['instance']>;
 type Renderer = ReturnType<WebGLRive['makeRenderer']>;
 
-interface WorldView { artboard: Artboard; vmi: VMI; mesh: string; atlas: boolean }
+/**
+ * The mesh and atlas strings are megabytes long and the Rive runtime hands every set string to the script on
+ * each draw (~9 ms per view for ~18 MB), so each is cleared once the script acknowledges it (`meshAck` /
+ * `atlasAck` count up when it has the value); an empty string tells the script to keep what it loaded.
+ */
+interface Pending { prop: 'mesh' | 'atlas'; ack: number }
+interface WorldView { artboard: Artboard; vmi: VMI; mesh: string; atlas: boolean; pending: Pending[] }
 
 export interface GpuViewSpec { vp: Viewport; race: Race; cam: Cam; focus: Kart | null; time: number }
 
@@ -90,10 +96,20 @@ export class GpuWorld {
       const artboard = file.artboardByName('World');
       const vmi = file.viewModelByName('World').instance();
       artboard.bindViewModelInstance(vmi);
-      v = { artboard, vmi, mesh: '', atlas: false };
+      v = { artboard, vmi, mesh: '', atlas: false, pending: [] };
       this.views[i] = v;
     }
     return v;
+  }
+
+  private ackOf(v: WorldView, prop: Pending['prop']): number {
+    return v.vmi.number(prop + 'Ack')?.value ?? 0;
+  }
+
+  private send(v: WorldView, prop: Pending['prop'], text: string) {
+    v.pending = v.pending.filter((p) => p.prop !== prop);
+    v.pending.push({ prop, ack: this.ackOf(v, prop) });
+    v.vmi.string(prop).value = text;
   }
 
   /** Renders one GPU world per viewport. Call once per frame (even with no views, to clear). */
@@ -108,12 +124,12 @@ export class GpuWorld {
     specs.forEach((s, i) => {
       const v = this.view(i);
       if (this.atlas && !v.atlas) {
-        v.vmi.string('atlas').value = this.atlas.text;
+        this.send(v, 'atlas', this.atlas.text);
         v.atlas = true;
       }
       const mesh = buildGpuMesh(s.race.track, this.atlas);
       if (v.mesh !== mesh.text) {
-        v.vmi.string('mesh').value = mesh.text;
+        this.send(v, 'mesh', mesh.text);
         v.mesh = mesh.text;
       }
       v.vmi.string('frame').value = packFrame(s.race, s.cam, { focus: s.focus, time: s.time, aspect: s.vp.w / Math.max(1, s.vp.h) }, this.flipY);
@@ -127,6 +143,11 @@ export class GpuWorld {
         ab.bounds, dpr);
       ab.draw(renderer);
       renderer.restore();
+      v.pending = v.pending.filter((p) => {
+        if (this.ackOf(v, p.prop) <= p.ack) return true;
+        v.vmi.string(p.prop).value = '';
+        return false;
+      });
     });
     renderer.flush();
   }

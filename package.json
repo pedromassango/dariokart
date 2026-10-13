@@ -35,6 +35,7 @@
     "riv": "node scripts/rivgen/build.mjs",
     "typecheck": "tsc --noEmit",
     "test": "tsx scripts/simulate.ts",
+    "test:offroad": "tsx scripts/offroad.ts",
     "difficulty": "tsx scripts/difficulty-report.ts",
     "demo": "bash scripts/demo/make-demo.sh",
     "rive:verify": "rive rive/world3d --verify && rive rive/speedfx --verify",

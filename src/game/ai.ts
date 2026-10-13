@@ -136,8 +136,12 @@ export function botInput(race: Race, k: Kart, dt: number): KartInput {
   const curveNow = tr.speedHint[(k.idx + 2) % n];
   const edgeRisk = fallTrack; // no power-slides over voids/water/lava
   if (k.drift !== 0) {
-    // release once the mini-turbo is charged and the corner is opening
-    out.hop = curveNow < 0.86 || (k.driftCharge < 1.05 && curveNow < 0.95);
+    // a drift always turns into the corner: let go before it carries the kart off the road
+    // (cutting across the inside) or once the kart already points past its line
+    const towardEdge = Math.sign(curLat) === k.drift ? edgeRatio > 0.55 : edgeRatio > 0.8;
+    const overTurning = Math.sign(err) !== k.drift && Math.abs(err) > 0.22;
+    // otherwise release once the mini-turbo is charged and the corner is opening
+    out.hop = !towardEdge && !overTurning && (curveNow < 0.86 || (k.driftCharge < 1.05 && curveNow < 0.95));
   } else if (sk.drifts && curveAhead < 0.82 && k.speed > maxS * 0.55 && Math.abs(out.steer) > 0.25 && !edgeRisk) {
     out.hop = k.hopping || !k.prevHop;
   } else out.hop = false;

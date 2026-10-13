@@ -11,7 +11,7 @@ game loads at runtime. The signed outputs are committed in `public/assets/`, so 
 ## Working on them
 
 ```bash
-curl -fsSL https://releases.rive.app/cli/install.sh | sh   # installs `rive` in ~/.rive/bin
+curl -fsSL https://releases.rive.app/cli/install.sh | bash   # installs `rive` in ~/.rive/bin
 npm run rive:verify      # type-check Luau / AnimaScript, compile WGSL (offline, no account)
 rive rive/world3d        # live preview window (runs unsigned scripts)
 rive login               # once; needed for publishing

@@ -21,6 +21,6 @@ jobs:
       - run: npm run build
       - name: Verify the Rive Scripting projects (Luau, AnimaScript, WGSL)
         run: |
-          curl -fsSL https://releases.rive.app/cli/install.sh | sh
+          curl -fsSL https://releases.rive.app/cli/install.sh | bash
           export PATH="$HOME/.rive/bin:$PATH"
           npm run rive:verify

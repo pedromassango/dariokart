@@ -81,6 +81,27 @@ export class Draw {
     this.r.clipPath(p as never);
   }
 
+  private clipOutPath: RenderPath | null = null;
+  /**
+   * Clips to the rectangle (x, y, w, h) minus `holes` (flat x0, y0, x1, y1 rectangles), using an
+   * even-odd path. Used to keep vector billboards from covering GPU-rendered karts in front of them.
+   */
+  clipOut(x: number, y: number, w: number, h: number, holes: ArrayLike<number>, count: number) {
+    let p = this.clipOutPath;
+    if (!p) {
+      p = this.rive.renderFactory.makeRenderPath() as unknown as RenderPath;
+      (p as unknown as { fillRule(v: number): void }).fillRule(this.rive.FillRule.evenOdd);
+      this.clipOutPath = p;
+    }
+    p.rewind();
+    p.moveTo(x, y); p.lineTo(x + w, y); p.lineTo(x + w, y + h); p.lineTo(x, y + h); p.close();
+    for (let i = 0; i < count; i++) {
+      const x0 = holes[i * 4], y0 = holes[i * 4 + 1], x1 = holes[i * 4 + 2], y1 = holes[i * 4 + 3];
+      p.moveTo(x0, y0); p.lineTo(x1, y0); p.lineTo(x1, y1); p.lineTo(x0, y1); p.close();
+    }
+    this.r.clipPath(p as never);
+  }
+
   private fillPaint(color: number): RenderPaint {
     const paint = this.paint;
     paint.color(color);

@@ -1,0 +1,7 @@
+name: world3d
+main: World
+output:
+  dir: build
+logs:
+  file: build/rive.log
+  problems: build/problems.log

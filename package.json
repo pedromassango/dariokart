@@ -2,7 +2,7 @@
   "name": "dariokart",
   "version": "1.0.0",
   "private": true,
-  "description": "Dariokart \u2014 a Super Mario Kart\u2013inspired kart racer for the web, rendered entirely with Rive (custom 3D engine on the Rive renderer + Rive artboards), bots at three difficulty levels, procedural chiptune audio and Firebase online multiplayer.",
+  "description": "Dariokart — a Super Mario Kart–inspired kart racer for the web, rendered with Rive: a GPU 3D world written with Rive Scripting (Luau + WGSL), AnimaScript speed effects, Rive artboards and UI, bots at three difficulty levels, procedural chiptune audio and Firebase online multiplayer.",
   "license": "MIT",
   "author": "Pedro Massango",
   "repository": {
@@ -36,10 +36,13 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx scripts/simulate.ts",
     "difficulty": "tsx scripts/difficulty-report.ts",
-    "demo": "bash scripts/demo/make-demo.sh"
+    "demo": "bash scripts/demo/make-demo.sh",
+    "rive:verify": "rive rive/world3d --verify && rive rive/speedfx --verify",
+    "rive:publish": "rive rive/world3d --publish && rive rive/speedfx --publish && cp rive/world3d/build/world3d.riv rive/speedfx/build/speedfx.riv public/assets/"
   },
   "dependencies": {
     "@rive-app/canvas-advanced": "^2.44.2",
+    "@rive-app/webgl2-advanced": "2.44.2",
     "firebase": "^13.0.0"
   },
   "devDependencies": {

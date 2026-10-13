@@ -9,3 +9,6 @@ dist
 
 # demo capture scratch
 .demo-tmp
+
+# Rive CLI build output (the signed world3d.riv is copied to public/assets)
+rive/*/build

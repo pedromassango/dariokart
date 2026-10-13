@@ -10,6 +10,8 @@ import type { Banner } from './hud';
 import { drawHud3D, drawReferee3D, drawCourseTitle } from './hud3d';
 import { riveText, riveTextWidth } from '../rive/riveText';
 import { ChaseCam, renderWorld, updateEffects, clearEffects } from '../rive3d/render';
+import type { GpuViewSpec } from '../rive3d/gpuWorld';
+import type { SpeedFx } from '../rive/speedFx';
 import { View } from '../rive3d/view';
 import { input } from './input';
 import { audio, type MusicName } from '../audio/audio';
@@ -288,13 +290,24 @@ export class RaceSession {
   private assetsRef: RiveAssets | null = null;
 
   /** Renders the whole frame with Rive: the 3D world for each view, then the HUD — w/h in CSS pixels */
-  render(d: Draw, assets: RiveAssets, w: number, h: number) {
+  /** what the GPU world renders: one camera per viewport */
+  gpuViews(w: number, h: number): GpuViewSpec[] {
+    return this.views(w, h).map((vp, i) => ({ vp, race: this.race, cam: this.cams[i] ?? this.cams[0], focus: this.locals[i] ?? this.leader(), time: this.time }));
+  }
+
+  render(d: Draw, assets: RiveAssets, w: number, h: number, gpu = false, speedFx: SpeedFx | null = null) {
     this.assetsRef = assets;
     const race = this.race;
     const views = this.views(w, h);
     views.forEach((vp, i) => {
       const k = this.locals[i] ?? this.leader();
-      renderWorld(d, assets, race, this.cams[i] ?? this.cams[0], vp, { focus: k, time: this.time, nameTags: !this.isAttract });
+      renderWorld(d, assets, race, this.cams[i] ?? this.cams[0], vp, { focus: k, time: this.time, nameTags: !this.isAttract, gpu });
+      if (speedFx && k && !this.isAttract) {
+        const racing = race.phase === 'racing' && k.fallTimer <= 0;
+        const speed = racing ? Math.max(0, k.speed) / Math.max(1, race.maxSpeedFor(k)) : 0;
+        const boost = racing && (k.boostTimer > 0 || k.starTimer > 0) ? 1 : 0;
+        speedFx.draw(d, 'fx' + i, vp, speed, boost, k.drift);
+      }
     });
     if (this.isAttract) return;
     const split = views.length > 1;

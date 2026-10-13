@@ -15,7 +15,9 @@ A Super Mario Kart–inspired kart racer for the web, **rendered entirely with R
 | ![Course select, drawn with Rive](docs/media/shot-select.jpg) | ![Racing on Dario Circuit](docs/media/shot-race.jpg) |
 | ![Choco Isle](docs/media/shot-choco.jpg) | ![Finishing on Prism Road](docs/media/shot-prism.jpg) |
 
-- **Everything is drawn by Rive.** Dariokart has its own small 3D engine whose only rasteriser is the Rive renderer (`@rive-app/canvas-advanced`). It handles a perspective chase camera, near-plane clipping, lighting, fog and depth sorting. Course geometry (road, curbs, block walls, castle battlements, rails, grandstands, hills) is filled as Rive paths. Karts, scenery, items, clouds, signs, ad boards, the crowd and the start banner are Rive artboards with live state machines placed in 3D; the karts pick one of five rotation views by viewing angle, like the SNES original.
+- **A real GPU 3D world, written with Rive Scripting.** `rive/world3d` is a Rive file whose Luau layout script drives a WGSL shader through Rive's GPU API, with a depth buffer, 4x MSAA, per-pixel sun lighting, distance fog, a sky dome with drifting clouds and stars, procedural mown grass, asphalt, sand, animated water and lava, rainbow item boxes and soft blended shadows. The course (road, curbs, walls, hills, scenery solids) is one GPU mesh, and 3D karts with drivers in each character's colours, item boxes, shells, bananas, coins and particles are instanced models. The game builds the meshes and streams the camera and objects into the script through view model data binding. It runs on Rive's WebGL2 runtime (`@rive-app/webgl2-advanced`) at 60 fps, with one camera per player in split screen.
+- **AnimaScript effects.** `rive/speedfx` is an AnimaScript (Rive's TypeScript-syntax language, compiled to WebAssembly) layout that draws MK8-style speed lines and a boost glow with Rive paths, driven live by your kart's speed, boost and drift.
+- **Rive artboards in the world:** scenery (trees, palms, Boos, thwomps, piranha plants), the start banner, turn signs, ad boards and the grandstand crowd are Rive artboards with state machines, placed in 3D on top of the GPU world. Without WebGL2, or with `?vector`, the whole world falls back to the earlier vector 3D engine drawn with Rive paths.
 - **UI in Rive too:** menus, HUD (a vector font made of Rive artboards), place badges, item slot, minimap portraits, the countdown referee and the trophy. The only exception is the native text box used for typing names and room codes, needed for mobile keyboards.
 - **Courses modelled on SNES Super Mario Kart** in the style of MK8's retro remakes: Dario Circuit, Donut Meadows, Boo Hollow, Bowzer Fortress, Choco Isle, Shell Beach, Frost Lake and Prism Road.
 - **Realtime:** Firebase Realtime Database (rooms, lobby, race state sync, item events).
@@ -27,7 +29,11 @@ npm install
 npm run dev        # http://localhost:5173
 npm run build      # regenerates the .riv, type-checks, bundles into dist/
 npm test           # headless races on every course at every difficulty
+npm run rive:verify    # type-check the Rive Scripting projects (needs the Rive CLI)
+npm run rive:publish   # rebuild + sign rive/world3d and rive/speedfx (needs `rive login`)
 ```
+
+See [rive/README.md](rive/README.md) for the Rive Scripting projects.
 
 Requires Node 20+. Single-player, Grand Prix, Time Trial and 2P split screen work offline; only online play needs Firebase.
 
@@ -129,8 +135,9 @@ Open the game in two different origins, for example two dev servers on different
 | Path | Contents |
 |---|---|
 | `src/game/` | Simulation: `race.ts` (physics, items, laps, places), `ai.ts` (bots), `track.ts` and `tracks.ts` (courses), `session.ts` (race loop, cameras, audio, netcode), `hud3d.ts` (Rive HUD), `input.ts` |
-| `src/rive3d/` | The Rive 3D engine: `view.ts` (camera, projection, clipping), `scene.ts` (course solids, Rive art quads, props), `render.ts` (sky, textured ground, lit and fogged polygons, depth-sorted Rive sprites, chase camera) |
-| `src/rive/` | Rive runtime, the drawing layer over the Rive renderer, artboard instances, glyph text |
+| `rive/` | Rive Scripting projects: `world3d/` (Luau + WGSL GPU renderer) and `speedfx/` (AnimaScript speed lines), built with the Rive CLI |
+| `src/rive3d/` | The 3D world on the game side: `gpuMesh.ts` (course mesh, 3D kart and item models, per-frame camera and instance data for the GPU script), `gpuWorld.ts` (hosts `world3d.riv` on the Rive WebGL2 runtime), `view.ts` (camera and projection), `scene.ts` (course solids, Rive art quads, props), `render.ts` (Rive billboards over the GPU world, the vector fallback renderer, chase camera) |
+| `src/rive/` | Rive runtime, the drawing layer over the Rive renderer, artboard instances, glyph text, `speedFx.ts` (hosts the AnimaScript speed effects) |
 | `src/ui/` | `rui.ts` (immediate-mode UI toolkit drawn with Rive: buttons, cards, toggles, sliders; keyboard, mouse, touch and gamepad navigation), `menus.ts` (every screen) |
 | `src/audio/` | Procedural chiptune music (10 original tracks), sound effects, engine sound |
 | `src/net/` | Firebase connection and multiplayer rooms |
@@ -147,13 +154,13 @@ Latest difficulty measurements (all 6 courses, 2 seeds each):
 
 ## Demo video
 
-`npm run demo` regenerates the demo video, GIF and screenshots in `docs/media/`. It needs a running dev server, ffmpeg and `npx playwright install chromium`.
+`npm run demo` regenerates the demo video, GIF and screenshots in `docs/media/`. It needs a running dev server, ffmpeg and `npx playwright install chromium` (or set `CHROME_PATH` to an existing Chromium/Chrome).
 
 `scripts/demo/record.mjs` drives the real game in headless Chromium and steps it exactly 1/30 s per frame, so the footage is smooth however fast the machine renders. `scripts/demo/audio.mjs` records the game's own audio engine on the same timeline.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). CI type-checks, rebuilds and validates the Rive file, runs the headless race tests and builds the bundle on every push and pull request.
+See [CONTRIBUTING.md](CONTRIBUTING.md). CI type-checks, rebuilds and validates the Rive file, runs the headless race tests, builds the bundle and verifies the Rive Scripting projects with the Rive CLI on every push and pull request.
 
 ## License and disclaimer
 

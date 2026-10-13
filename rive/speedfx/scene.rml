@@ -1,0 +1,32 @@
+<Rive version="1" kind="fragment">
+    <!-- MK8-style speed lines + boost glow, drawn by an AnimaScript layout over the race view.
+         The game sizes the artboard to each viewport and sets speed / boost / drift every frame. -->
+    <Artboard defaultStateMachineId="0:7" viewModelId="0:40" viewModelInstanceId="0:41" clip="true" width="1280" height="720" styleId="0:5" name="SpeedFx" id="0:2">
+        <LayoutComponentStyle name="Artboard Style" id="0:5"/>
+        <LayoutComponent width="1280" height="720" styleId="0:11" name="Root" id="0:10">
+            <LayoutComponentStyle layoutWidthScaleType="fill" layoutHeightScaleType="fill"
+                widthUnitsValue="auto" heightUnitsValue="auto" name="Style" id="0:11"/>
+            <ScriptedLayout scriptAssetId="0:80" name="SpeedFx" id="0:12"/>
+        </LayoutComponent>
+        <StateMachine name="State Machine 1" id="0:7">
+            <StateMachineLayer name="Layer 1" id="0:8">
+                <AnyState x="200" y="-120"/>
+                <ExitState x="400" y="-120"/>
+                <EntryState/>
+            </StateMachineLayer>
+        </StateMachine>
+    </Artboard>
+
+    <ViewModel defaultInstanceId="0:41" name="SpeedFx" id="0:40">
+        <ViewModelPropertyNumber name="speed" id="0:45"/>
+        <ViewModelPropertyNumber name="boost" id="0:46"/>
+        <ViewModelPropertyNumber name="drift" id="0:47"/>
+        <ViewModelInstance exports="true" name="Instance" id="0:41">
+            <ViewModelInstanceNumber propertyValue="0" viewModelPropertyId="0:45"/>
+            <ViewModelInstanceNumber propertyValue="0" viewModelPropertyId="0:46"/>
+            <ViewModelInstanceNumber propertyValue="0" viewModelPropertyId="0:47"/>
+        </ViewModelInstance>
+    </ViewModel>
+
+    <ScriptAsset file="speedfx.as" name="speedfx" id="0:80"/>
+</Rive>

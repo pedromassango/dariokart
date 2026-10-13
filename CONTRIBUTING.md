@@ -15,6 +15,7 @@ npm run dev          # http://localhost:5173
 npm run typecheck    # TypeScript
 npm run riv          # rebuild + validate the .riv asset pack (if you touched scripts/rivgen)
 npm test             # headless races on every course at every difficulty
+npm run rive:verify  # if you touched rive/ (Luau, AnimaScript, WGSL); needs the Rive CLI
 npm run build        # production bundle
 ```
 
@@ -25,7 +26,8 @@ CI runs the same checks.
 | Area | Location |
 |---|---|
 | Simulation (physics, items, laps, AI) | `src/game/` (no DOM, so it runs headless in Node) |
-| Rive 3D engine (world renderer) | `src/rive3d/` |
+| GPU 3D world (Rive Scripting: Luau + WGSL) and AnimaScript effects | `rive/` (see `rive/README.md`) |
+| 3D world, game side (meshes, models, frame data, vector fallback) | `src/rive3d/` |
 | Rive UI toolkit and menus | `src/ui/` |
 | Rive runtime, HUD text, artboard instances | `src/rive/` |
 | `.riv` generator (art is code) | `scripts/rivgen/`; preview every artboard at `/riv-preview.html` |

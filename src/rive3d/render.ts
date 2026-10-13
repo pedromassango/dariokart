@@ -32,10 +32,11 @@ function pack(r: number, g: number, b: number, a = 1): number {
 const LX = -0.38, LY = -0.48, LZ = 0.79;
 
 interface Drawable { depth: number; draw: () => void }
+const holes = new Float32Array(64), holeDepth = new Float32Array(16), clipHoles = new Float32Array(64);
 const list: Drawable[] = [];
 
 // ---------------------------------------------------------------- particles (visual only)
-interface Spark { x: number; y: number; z: number; vx: number; vy: number; vz: number; life: number; max: number; color: number; size: number; grow: number }
+export interface Spark { x: number; y: number; z: number; vx: number; vy: number; vz: number; life: number; max: number; color: number; size: number; grow: number }
 const sparks: Spark[] = [];
 function spark(s: Omit<Spark, 'max'>) { if (sparks.length < 500) sparks.push({ ...s, max: s.life }); }
 
@@ -64,6 +65,8 @@ export function updateEffects(race: Race, dt: number) {
   }
 }
 export function clearEffects() { sparks.length = 0; }
+/** live particles (the GPU world draws them depth-tested) */
+export function effectSparks(): readonly Spark[] { return sparks; }
 
 // ---------------------------------------------------------------- ground helpers
 /** projects and batches a ground (z = 0) quad */
@@ -414,7 +417,8 @@ function drawArt(d: Draw, assets: RiveAssets, a: Scene3D['art'][number]) {
   assets.drawAffine(d, a.key, a.artboard, x0, y0, x1, y1, x2, y2);
 }
 
-export interface RenderOpts { focus: Kart | null; time: number; nameTags: boolean }
+/** gpu: the course, karts and items are drawn by the GPU world underneath; only Rive billboards go here */
+export interface RenderOpts { focus: Kart | null; time: number; nameTags: boolean; gpu?: boolean }
 
 /** Renders one player's view of the race, entirely with Rive. */
 export function renderWorld(d: Draw, assets: RiveAssets, race: Race, cam: Cam, vp: Viewport, opts: RenderOpts) {
@@ -427,30 +431,71 @@ export function renderWorld(d: Draw, assets: RiveAssets, race: Race, cam: Cam, v
   d.translate(vp.x, vp.y);
   d.clipRect(0, 0, vp.w, vp.h);
 
-  drawSky(d, assets, race, scene, time);
-  drawGround(d, race, time, opts.focus);
-
-  // horizon haze (aerial perspective for far ground)
-  const hy = view.horizonY();
+  const gpu = !!opts.gpu;
   const fogC = hexRgb(th.fog);
-  d.gradientRect(0, hy - 2, vp.w, Math.max(4, vp.h * 0.08), [[0, pack(fogC[0], fogC[1], fogC[2], 0.9)], [1, pack(fogC[0], fogC[1], fogC[2], 0)]]);
-
   list.length = 0;
-  addFaces(d, scene, fogC, th.fogNear, th.fogFar);
+  if (!gpu) {
+    drawSky(d, assets, race, scene, time);
+    drawGround(d, race, time, opts.focus);
+    // horizon haze (aerial perspective for far ground)
+    const hy = view.horizonY();
+    d.gradientRect(0, hy - 2, vp.w, Math.max(4, vp.h * 0.08), [[0, pack(fogC[0], fogC[1], fogC[2], 0.9)], [1, pack(fogC[0], fogC[1], fogC[2], 0)]]);
+    addFaces(d, scene, fogC, th.fogNear, th.fogFar);
+  }
 
   const tr = race.track;
+  // GPU mode: karts live in the GPU layer underneath, so a billboard farther away than a kart is
+  // clipped around that kart's screen rectangle instead of being painted over it
+  let holeCount = 0;
+  if (gpu) {
+    for (const k of race.karts) {
+      if (k.fallTimer > 0 || holeCount >= 16) continue;
+      view.toCam(k.x, k.y, k.z);
+      if (view.oz < NEAR) continue;
+      const c = Math.cos(k.heading), sn = Math.sin(k.heading), sc = k.scale;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, ok = true;
+      for (const [lx, ly] of [[7, 5.5], [7, -5.5], [-7, 5.5], [-7, -5.5]]) {
+        for (const lz of [0, 11.5]) {
+          if (!view.project(k.x + (lx * c - ly * sn) * sc, k.y + (lx * sn + ly * c) * sc, k.z + lz * sc)) { ok = false; continue; }
+          x0 = Math.min(x0, view.sx); y0 = Math.min(y0, view.sy); x1 = Math.max(x1, view.sx); y1 = Math.max(y1, view.sy);
+        }
+      }
+      if (!ok || x1 < 0 || y1 < 0 || x0 > vp.w || y0 > vp.h) continue;
+      view.toCam(k.x, k.y, k.z);
+      holes[holeCount * 4] = x0; holes[holeCount * 4 + 1] = y0; holes[holeCount * 4 + 2] = x1; holes[holeCount * 4 + 3] = y1;
+      holeDepth[holeCount] = view.oz;
+      holeCount++;
+    }
+  }
   const pushAt = (x: number, y: number, z: number, fn: () => void, maxD = th.fogFar, minD = 9) => {
     view.toCam(x, y, z);
     if (view.oz < minD || view.oz > maxD) return; // nothing pops up right in front of the lens
     if (Math.abs(view.ox) > view.oz * (view.cx / view.focal) * 1.3 + 40) return;
-    list.push({ depth: view.oz, draw: fn });
+    const depth = view.oz;
+    if (gpu && holeCount > 0) {
+      list.push({ depth, draw: () => {
+        let n = 0;
+        for (let i = 0; i < holeCount; i++) {
+          if (holeDepth[i] >= depth - 3) continue;
+          for (let j = 0; j < 4; j++) clipHoles[n * 4 + j] = holes[i * 4 + j];
+          n++;
+        }
+        if (n === 0) { fn(); return; }
+        d.save();
+        d.clipOut(0, 0, vp.w, vp.h, clipHoles, n);
+        fn();
+        d.restore();
+      } });
+      return;
+    }
+    list.push({ depth, draw: fn });
   };
   for (const a of scene.art) pushAt(a.cx, a.cy, a.cz, () => drawArt(d, assets, a));
   for (const p of scene.props) {
     const z = p.z + (p.bob !== undefined ? Math.sin(time * 1.6 + p.bob) * 2.5 : 0);
     pushAt(p.x, p.y, z, () => sprite(d, assets, 'prop_' + p.kind, p.artboard, p.x, p.y, z, p.height * p.aspect, p.anchor), 1300);
   }
-  tr.obstacles.forEach((o, i) => {
+  if (!gpu) tr.obstacles.forEach((o, i) => {
     if (o.kind === 'thwomp') {
       const lift = Math.max(0, Math.sin(time * 1.3 + i * 2)) * 12;
       pushAt(o.x, o.y, lift, () => sprite(d, assets, 'thwomp' + i, 'Thwomp', o.x, o.y, lift, 20, 0.98, { inputs: { slam: lift < 3 } }));
@@ -460,16 +505,16 @@ export function renderWorld(d: Draw, assets: RiveAssets, race: Race, cam: Cam, v
       pushAt(o.x, o.y, 0, () => sprite(d, assets, 'piranha', 'Piranha', o.x, o.y, 0, 13, 0.98));
     }
   });
-  tr.itemBoxes.forEach((b, i) => {
+  if (!gpu) tr.itemBoxes.forEach((b, i) => {
     if (!race.boxVisible(i)) return;
     const z = 5 + Math.sin(time * 2.5 + i) * 0.9;
     pushAt(b.x, b.y, z, () => sprite(d, assets, 'itembox', 'ItemBox', b.x, b.y, z, 10, 0.5), 900);
   });
-  tr.coins.forEach((c, i) => {
+  if (!gpu) tr.coins.forEach((c, i) => {
     if (!race.coinVisible(i)) return;
     pushAt(c.x, c.y, 0, () => sprite(d, assets, 'coin', 'Item_coin', c.x, c.y, 0.5, 7, 0.95), 700);
   });
-  for (const e of race.items) {
+  if (!gpu) for (const e of race.items) {
     const name = e.type === 'banana' ? 'Item_banana' : e.type === 'greenShell' ? 'Item_greenShell' : 'Item_redShell';
     pushAt(e.x, e.y, e.z, () => sprite(d, assets, 'trk_' + e.type, name, e.x, e.y, e.z, 9, 0.95));
   }
@@ -479,10 +524,10 @@ export function renderWorld(d: Draw, assets: RiveAssets, race: Race, cam: Cam, v
     view.toCam(k.x, k.y, 0);
     // karts squeezed between the camera and your kart would cover the screen
     if (k !== opts.focus && (view.oz < 20 || (opts.focus && view.oz < focusDepth - 2))) continue;
-    pushAt(k.x, k.y, k.z, () => drawKart(d, assets, k, time), 1500, NEAR);
+    if (!gpu) pushAt(k.x, k.y, k.z, () => drawKart(d, assets, k, time), 1500, NEAR);
     if (k.fallTimer > 0 && k.fallTimer < 1.3) pushAt(k.x, k.y, 16 + k.z, () => sprite(d, assets, 'ref_rescue_' + k.id, 'Referee', k.x, k.y, 6 + k.z, 26, 1));
   }
-  for (const p of sparks) {
+  if (!gpu) for (const p of sparks) {
     pushAt(p.x, p.y, p.z, () => {
       if (!view.project(p.x, p.y, p.z)) return;
       const r = Math.max(1, p.size * view.scale);

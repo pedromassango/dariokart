@@ -1,0 +1,23 @@
+<Rive version="1" kind="fragment">
+    <!-- The 3D world: one artboard whose root layout hosts the AnimaScript GPU renderer. The game
+         sizes the artboard to its canvas and feeds the renderer through the World view model. -->
+    <Artboard viewModelId="0:40" viewModelInstanceId="0:41" clip="true" width="1280" height="720" styleId="0:5" name="World" id="0:2">
+        <LayoutComponentStyle name="Artboard Style" id="0:5"/>
+        <LayoutComponent width="1280" height="720" styleId="0:11" name="Root" id="0:10">
+            <LayoutComponentStyle layoutWidthScaleType="fill" layoutHeightScaleType="fill"
+                widthUnitsValue="auto" heightUnitsValue="auto" name="Style" id="0:11"/>
+            <ScriptedLayout scriptAssetId="0:80" name="World3D" id="0:12"/>
+        </LayoutComponent>
+    </Artboard>
+
+    <ViewModel defaultInstanceId="0:41" name="World" id="0:40">
+        <ViewModelPropertyString name="mesh" id="0:45"/>
+        <ViewModelPropertyString name="frame" id="0:46"/>
+        <ViewModelInstance exports="true" name="Instance" id="0:41">
+            <ViewModelInstanceString propertyValue="" viewModelPropertyId="0:45"/>
+            <ViewModelInstanceString propertyValue="" viewModelPropertyId="0:46"/>
+        </ViewModelInstance>
+    </ViewModel>
+
+    <ScriptAsset file="World3D.luau" name="World3D" id="0:80"/>
+</Rive>

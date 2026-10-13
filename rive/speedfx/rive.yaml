@@ -1,0 +1,8 @@
+name: speedfx
+main: SpeedFx
+scripting: wasm
+output:
+  dir: build
+logs:
+  file: build/rive.log
+  problems: build/problems.log

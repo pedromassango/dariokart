@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 
 const out = process.argv[2];
-const browser = await chromium.launch({ headless: true, args: ['--autoplay-policy=no-user-gesture-required'] });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH || undefined, args: ['--autoplay-policy=no-user-gesture-required'] });
 const page = await browser.newPage();
 await page.goto('http://localhost:5173/');
 await page.waitForFunction(() => window.dariokart?.audio, null, { timeout: 30000 });

@@ -4,7 +4,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; }
 #stage { position: fixed; inset: 0; background: var(--bg); }
-#game { position: absolute; inset: 0; display: block; }
+#world3d, #game { position: absolute; inset: 0; display: block; }
 #boot { position: fixed; inset: 0; display: grid; place-items: center; color: #fff; font: 20px 'Lilita One', system-ui, sans-serif; letter-spacing: 2px; background: var(--bg); z-index: 50; }
 #boot.gone { display: none; }
 .rive-field { position: absolute; z-index: 5; border: 0; outline: none; background: transparent; color: #141a40; text-align: center; text-transform: uppercase; font-family: 'Lilita One', system-ui, sans-serif; letter-spacing: .08em; caret-color: #d81e1e; }

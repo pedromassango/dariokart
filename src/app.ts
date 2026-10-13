@@ -5,6 +5,8 @@ import { loadGlyphs } from './rive/riveText';
 import { RaceSession, type SessionSetup } from './game/session';
 import { TRACKS } from './game/tracks';
 import { CHARACTERS } from './game/characters';
+import { GpuWorld } from './rive3d/gpuWorld';
+import { SpeedFx } from './rive/speedFx';
 
 export interface Widget {
   canvas: HTMLCanvasElement;
@@ -23,6 +25,10 @@ export class App {
   canvas: HTMLCanvasElement;
   private renderer!: WrappedRenderer;
   private draw!: Draw;
+  /** the GPU 3D world (Rive WebGL2 runtime + AnimaScript renderer); null when unavailable */
+  gpu: GpuWorld | null = null;
+  /** AnimaScript speed lines / boost glow (null if speedfx.riv is unavailable) */
+  speedFx: SpeedFx | null = null;
   session: RaceSession | null = null;
   private attract: RaceSession | null = null;
   private widgets = new Set<Widget>();
@@ -54,6 +60,13 @@ export class App {
     const [file] = await Promise.all([loadAssetFile(), loadGlyphs()]);
     this.assets = new RiveAssets(this.rive, file);
     this.renderer = this.rive.makeRenderer(this.canvas);
+    this.speedFx = await SpeedFx.load(this.rive);
+    const gpuCanvas = document.getElementById('world3d') as HTMLCanvasElement | null;
+    const noGpu = new URLSearchParams(location.search).has('vector');
+    if (gpuCanvas && !noGpu) {
+      const gpu = new GpuWorld(gpuCanvas);
+      if (await gpu.init()) this.gpu = gpu;
+    }
     this.draw = new Draw(this.rive, this.renderer);
 
     window.addEventListener('resize', () => this.resize());
@@ -77,12 +90,14 @@ export class App {
   resize() {
     this.cssW = window.innerWidth;
     this.cssH = window.innerHeight;
-    // the whole world is vector-rendered every frame: cap the backing resolution for a steady frame rate
-    this.dpr = Math.min(1.25, window.devicePixelRatio || 1);
+    // with the GPU world only billboards + HUD are vector-rendered; without it the whole world is, so
+    // cap the backing resolution for a steady frame rate
+    this.dpr = Math.min(this.gpu ? 2 : 1.25, window.devicePixelRatio || 1);
     this.canvas.style.width = this.cssW + 'px';
     this.canvas.style.height = this.cssH + 'px';
     this.canvas.width = Math.floor(this.cssW * this.dpr);
     this.canvas.height = Math.floor(this.cssH * this.dpr);
+    this.gpu?.resize(this.cssW, this.cssH, Math.min(2, window.devicePixelRatio || 1));
     document.documentElement.style.setProperty('--game-w', this.cssW + 'px');
     document.documentElement.style.setProperty('--game-h', this.cssH + 'px');
     document.documentElement.style.setProperty('--game-scale', String(Math.min(this.cssW / 512, this.cssH / 448)));
@@ -149,12 +164,15 @@ export class App {
       if (s === this.attract && s.race.phase === 'done') this.newAttract();
     }
 
-    // the frame: 3D world + HUD, all drawn through the Rive renderer
+    // the frame: the GPU 3D world (AnimaScript on Rive's WebGL2 renderer) underneath, then the Rive
+    // billboards, HUD and menus on the vector Rive canvas
+    const gpu = this.gpu;
+    if (gpu) gpu.render(s ? s.gpuViews(this.cssW, this.cssH) : [], now);
     const d = this.draw;
     this.renderer.clear();
     d.save();
     d.scale(this.dpr);
-    if (s) s.render(d, this.assets, this.cssW, this.cssH);
+    if (s) s.render(d, this.assets, this.cssW, this.cssH, !!gpu, this.speedFx);
     this.overlay?.(d, this.cssW, this.cssH, this.t);
     d.restore();
     this.renderer.flush?.();

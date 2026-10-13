@@ -65,7 +65,10 @@ export class App {
     const noGpu = new URLSearchParams(location.search).has('vector');
     if (gpuCanvas && !noGpu) {
       const gpu = new GpuWorld(gpuCanvas);
-      if (await gpu.init()) this.gpu = gpu;
+      if (await gpu.init()) {
+        await gpu.loadAtlas(this.rive, this.assets);
+        this.gpu = gpu;
+      }
     }
     this.draw = new Draw(this.rive, this.renderer);
 

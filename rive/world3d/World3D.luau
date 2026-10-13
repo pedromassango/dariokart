@@ -1,12 +1,16 @@
 -- Dariokart 3D world renderer (Rive Scripting: a Luau layout script driving a WGSL shader).
 --
--- It renders the whole race world on the GPU with a depth buffer: sky dome, course, walls, scenery and
--- instanced 3D karts / items, lit and fogged by World3DShader.wgsl. The game drives it through two
+-- It renders the whole race world on the GPU with a depth buffer: sky dome, course, walls, the Rive
+-- billboard scenery (from a baked atlas) and instanced 3D karts / items, lit and fogged by World3DShader.wgsl. The game drives it through two
 -- strings on the `World` view model:
 --
---   mesh  : "<staticVerts>,<model0Verts>,<model1Verts>,...;<base64 vertex bytes>"
+--   mesh  : "<staticVerts>,<model0Verts>,...;<spriteVerts>;<base64 vertex bytes>;<base64 sprite bytes>"
 --           20 bytes per vertex: position f32x3, normal snorm8x4, colour unorm8x4 (alpha = material).
 --           Static geometry first, then each instanced model. Rebuilt when a race starts.
+--           Sprites are the Rive billboards (scenery, signs, banner, crowd): 32 bytes per vertex,
+--           position f32x3, offset f32x2, uv f32x2, normal snorm8x4, textured from the atlas.
+--   atlas : "<width>,<height>,<levels>;<base64 RGBA of every mip level>" the Rive artboards the game
+--           baked into one texture. Set once.
 --   frame : comma separated numbers: 56 uniform floats (the shader's `U` struct), then for every
 --           model: instanceCount followed by instanceCount * 16 floats. Updated every frame.
 --           The last model is the soft blob shadow, drawn alpha-blended after everything else.
@@ -15,7 +19,15 @@ type World3D = {
   context: Context,
   meshProp: Property<string>?,
   frameProp: Property<string>?,
+  atlasProp: Property<string>?,
   meshSrc: string,
+  atlasSrc: string,
+  atlasView: GPUTextureView?,
+  spritePipe: GPUPipeline?,
+  spriteGroup: GPUBindGroup?,
+  spriteVbo: GPUBuffer?,
+  spriteCount: number,
+  texSampler: GPUSampler?,
   frameSrc: string,
   width: number,
   height: number,
@@ -50,6 +62,7 @@ local UNIFORM_FLOATS = 56
 local INST_FLOATS = 16
 local MAX_INSTANCES = 512
 local VERTEX_BYTES = 20
+local SPRITE_BYTES = 32
 local DEPTH_FORMAT: 'depth24plus-stencil8' = 'depth24plus-stencil8'
 
 local decodeTable: { [number]: number } = {}
@@ -165,18 +178,86 @@ local function buildPipelines(self: World3D): boolean
   self.staticGroup = GPUBindGroup.new({ layout = stat:getBindGroupLayout(0), ubos = { { slot = 0, buffer = ubo } } })
   self.instGroup = GPUBindGroup.new({ layout = inst:getBindGroupLayout(0), ubos = { { slot = 0, buffer = ubo } } })
   self.shadowGroup = GPUBindGroup.new({ layout = shadow:getBindGroupLayout(0), ubos = { { slot = 0, buffer = ubo } } })
+  local spriteLayout: VertexBufferLayout = {
+    stride = SPRITE_BYTES,
+    attributes = {
+      { format = 'float32x3', slot = 0, offset = 0 },
+      { format = 'float32x2', slot = 1, offset = 12 },
+      { format = 'float32x2', slot = 2, offset = 20 },
+      { format = 'snorm8x4', slot = 3, offset = 28 },
+    },
+  }
+  self.spritePipe = makePipeline(self, shader, 'vs_sprite', 'fs_sprite', { spriteLayout }, true)
+  self.texSampler = GPUSampler.new({ min = 'linear', mag = 'linear', mipmap = 'linear', wrapU = 'clamp-to-edge', wrapV = 'clamp-to-edge' })
   return true
+end
+
+-- uploads the baked billboard atlas (every mip level) and binds it for the sprite pipeline
+local function loadAtlas(self: World3D, src: string)
+  self.atlasSrc = src
+  self.spriteGroup = nil
+  local sep = string.find(src, ';', 1, true)
+  if sep == nil then
+    return
+  end
+  local head = string.split(string.sub(src, 1, sep - 1), ',')
+  local w = tonumber(head[1]) or 0
+  local h = tonumber(head[2]) or 0
+  local levels = tonumber(head[3]) or 1
+  if w <= 0 or h <= 0 then
+    return
+  end
+  local total = 0
+  local lw, lh = w, h
+  for _ = 1, levels do
+    total += lw * lh * 4
+    lw = math.max(1, math.floor(lw / 2))
+    lh = math.max(1, math.floor(lh / 2))
+  end
+  local bytes = decodeBase64(src, sep + 1, total)
+  local tex = GPUTexture.new({ width = w, height = h, format = 'rgba8unorm', mipmaps = levels, label = 'atlas' })
+  local offset = 0
+  lw, lh = w, h
+  for level = 0, levels - 1 do
+    local size = lw * lh * 4
+    local data = buffer.create(size)
+    buffer.copy(data, 0, bytes, offset, size)
+    tex:upload({ data = data, mipLevel = level, width = lw, height = lh })
+    offset += size
+    lw = math.max(1, math.floor(lw / 2))
+    lh = math.max(1, math.floor(lh / 2))
+  end
+  self.atlasView = tex:view()
+  local pipe = self.spritePipe :: GPUPipeline
+  self.spriteGroup = GPUBindGroup.new({
+    layout = pipe:getBindGroupLayout(0),
+    ubos = { { slot = 0, buffer = self.ubo :: GPUBuffer } },
+    textures = { { slot = 1, view = self.atlasView :: GPUTextureView } },
+    samplers = { { slot = 2, sampler = self.texSampler :: GPUSampler } },
+  })
 end
 
 local function loadMesh(self: World3D, src: string)
   self.meshSrc = src
   self.vbo = nil
+  self.spriteVbo = nil
+  self.spriteCount = 0
   self.staticCount = 0
   self.modelStart = {}
   self.modelCount = {}
   local sep = string.find(src, ';', 1, true)
   if sep == nil then
     return
+  end
+  local sep2 = string.find(src, ';', sep + 1, true)
+  local sep3 = if sep2 then string.find(src, ';', sep2 + 1, true) else nil
+  if sep2 == nil or sep3 == nil then
+    return
+  end
+  local sprites = tonumber(string.sub(src, sep + 1, sep2 - 1)) or 0
+  if sprites > 0 then
+    self.spriteCount = sprites
+    self.spriteVbo = GPUBuffer.new({ size = sprites * SPRITE_BYTES, usage = 'vertex', data = decodeBase64(src, sep3 + 1, sprites * SPRITE_BYTES), immutable = true })
   end
   local total = 0
   for idx, v in string.split(string.sub(src, 1, sep - 1), ',') do
@@ -193,7 +274,7 @@ local function loadMesh(self: World3D, src: string)
     return
   end
   local size = total * VERTEX_BYTES
-  self.vbo = GPUBuffer.new({ size = size, usage = 'vertex', data = decodeBase64(src, sep + 1, size), immutable = true })
+  self.vbo = GPUBuffer.new({ size = size, usage = 'vertex', data = decodeBase64(src, sep2 + 1, size), immutable = true })
   while #self.instBuffers < #self.modelCount do
     table.insert(self.instBuffers, GPUBuffer.new({ size = MAX_INSTANCES * INST_FLOATS * 4, usage = 'vertex' }))
     table.insert(self.instCounts, 0)
@@ -234,6 +315,7 @@ function init(self: World3D, context: Context): boolean
   if vm then
     self.meshProp = vm:getString('mesh')
     self.frameProp = vm:getString('frame')
+    self.atlasProp = vm:getString('atlas')
   end
   if context:features().maxSamples >= 4 then
     self.samples = 4
@@ -278,6 +360,10 @@ function draw(self: World3D, renderer: Renderer)
   if mesh ~= self.meshSrc then
     loadMesh(self, mesh)
   end
+  local atlasProp = self.atlasProp
+  if atlasProp and atlasProp.value ~= self.atlasSrc then
+    loadAtlas(self, atlasProp.value)
+  end
   local frame = frameProp.value
   if frame ~= self.frameSrc then
     self.frameSrc = frame
@@ -321,6 +407,14 @@ function draw(self: World3D, renderer: Renderer)
       pass:setVertexBuffer(0, vbo)
       pass:draw(self.staticCount, 1, 0)
     end
+    local spriteVbo = self.spriteVbo
+    local spriteGroup = self.spriteGroup
+    if spriteVbo and spriteGroup and self.spriteCount > 0 then
+      pass:setPipeline(self.spritePipe :: GPUPipeline)
+      pass:setBindGroup(0, spriteGroup)
+      pass:setVertexBuffer(0, spriteVbo)
+      pass:draw(self.spriteCount)
+    end
     pass:setPipeline(self.instPipe :: GPUPipeline)
     pass:setBindGroup(0, self.instGroup :: GPUBindGroup)
     pass:setVertexBuffer(0, vbo)
@@ -351,7 +445,15 @@ return function(context: Context): Layout<World3D>
     context = context,
     meshProp = nil,
     frameProp = nil,
+    atlasProp = nil,
     meshSrc = '',
+    atlasSrc = '',
+    atlasView = nil,
+    spritePipe = nil,
+    spriteGroup = nil,
+    spriteVbo = nil,
+    spriteCount = 0,
+    texSampler = nil,
     frameSrc = '',
     width = 0,
     height = 0,

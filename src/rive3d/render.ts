@@ -417,7 +417,7 @@ function drawArt(d: Draw, assets: RiveAssets, a: Scene3D['art'][number]) {
   assets.drawAffine(d, a.key, a.artboard, x0, y0, x1, y1, x2, y2);
 }
 
-/** gpu: the course, karts and items are drawn by the GPU world underneath; only Rive billboards go here */
+/** gpu: the world is drawn by the GPU layer underneath; only the rescue referee goes here */
 export interface RenderOpts { focus: Kart | null; time: number; nameTags: boolean; gpu?: boolean }
 
 /** Renders one player's view of the race, entirely with Rive. */
@@ -490,8 +490,9 @@ export function renderWorld(d: Draw, assets: RiveAssets, race: Race, cam: Cam, v
     }
     list.push({ depth, draw: fn });
   };
-  for (const a of scene.art) pushAt(a.cx, a.cy, a.cz, () => drawArt(d, assets, a));
-  for (const p of scene.props) {
+  // GPU mode: signs, banner, crowd and scenery are baked into the GPU world's sprite atlas (depth tested)
+  if (!gpu) for (const a of scene.art) pushAt(a.cx, a.cy, a.cz, () => drawArt(d, assets, a));
+  if (!gpu) for (const p of scene.props) {
     const z = p.z + (p.bob !== undefined ? Math.sin(time * 1.6 + p.bob) * 2.5 : 0);
     pushAt(p.x, p.y, z, () => sprite(d, assets, 'prop_' + p.kind, p.artboard, p.x, p.y, z, p.height * p.aspect, p.anchor), 1300);
   }

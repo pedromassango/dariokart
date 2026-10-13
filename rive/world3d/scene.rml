@@ -13,9 +13,11 @@
     <ViewModel defaultInstanceId="0:41" name="World" id="0:40">
         <ViewModelPropertyString name="mesh" id="0:45"/>
         <ViewModelPropertyString name="frame" id="0:46"/>
+        <ViewModelPropertyString name="atlas" id="0:47"/>
         <ViewModelInstance exports="true" name="Instance" id="0:41">
             <ViewModelInstanceString propertyValue="" viewModelPropertyId="0:45"/>
             <ViewModelInstanceString propertyValue="" viewModelPropertyId="0:46"/>
+            <ViewModelInstanceString propertyValue="" viewModelPropertyId="0:47"/>
         </ViewModelInstance>
     </ViewModel>
 

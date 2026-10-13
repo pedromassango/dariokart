@@ -3,12 +3,15 @@ import type { Kart } from '../game/kart';
 import type { Viewport } from '../game/projector';
 import type { Cam } from './view';
 import { buildGpuMesh, packFrame } from './gpuMesh';
+import { buildSpriteAtlas, type SpriteAtlas } from './spriteAtlas';
+import type { RiveAssets } from '../rive/assets';
+import type { RiveRuntime } from '../rive/runtime';
 
 /**
- * Hosts the GPU 3D world: Rive's WebGL2 runtime playing `world3d.riv`, whose AnimaScript layout script
- * (rive/world3d/world3d.as) renders the course, karts and items with a depth buffer through a WGSL
- * shader. It draws into its own canvas underneath the vector (canvas2d) Rive canvas that carries the
- * Rive artboard billboards, HUD and menus.
+ * Hosts the GPU 3D world: Rive's WebGL2 runtime playing `world3d.riv`, whose Luau layout script
+ * (rive/world3d/World3D.luau) renders the course, karts, items and the Rive billboard scenery (baked
+ * into a sprite atlas) with a depth buffer through a WGSL shader. It draws into its own canvas
+ * underneath the vector (canvas2d) Rive canvas that carries the HUD and menus.
  *
  * If WebGL2 or the signed .riv is unavailable, `ready` stays false and the game keeps the vector
  * renderer for the world.
@@ -20,7 +23,7 @@ type Artboard = ReturnType<RiveFile['artboardByName']>;
 type VMI = ReturnType<ReturnType<RiveFile['viewModelByName']>['instance']>;
 type Renderer = ReturnType<WebGLRive['makeRenderer']>;
 
-interface WorldView { artboard: Artboard; vmi: VMI; mesh: string }
+interface WorldView { artboard: Artboard; vmi: VMI; mesh: string; atlas: boolean }
 
 export interface GpuViewSpec { vp: Viewport; race: Race; cam: Cam; focus: Kart | null; time: number }
 
@@ -32,6 +35,7 @@ export class GpuWorld {
   private views: WorldView[] = [];
   private dpr = 1;
   private lastT = 0;
+  private atlas: SpriteAtlas | null = null;
   /** 1 or -1: some GL paths present render targets upside down; flipped once if detected */
   flipY = 1;
 
@@ -66,6 +70,11 @@ export class GpuWorld {
     }
   }
 
+  /** bakes the Rive billboard artboards (vector runtime) into the sprite atlas the GPU world samples */
+  async loadAtlas(rive: RiveRuntime, assets: RiveAssets) {
+    try { this.atlas = await buildSpriteAtlas(rive, assets, []); } catch (e) { console.warn('[dariokart] sprite atlas failed', e); }
+  }
+
   resize(cssW: number, cssH: number, dpr: number) {
     this.dpr = dpr;
     this.canvas.style.width = cssW + 'px';
@@ -81,7 +90,7 @@ export class GpuWorld {
       const artboard = file.artboardByName('World');
       const vmi = file.viewModelByName('World').instance();
       artboard.bindViewModelInstance(vmi);
-      v = { artboard, vmi, mesh: '' };
+      v = { artboard, vmi, mesh: '', atlas: false };
       this.views[i] = v;
     }
     return v;
@@ -98,7 +107,11 @@ export class GpuWorld {
     renderer.clear();
     specs.forEach((s, i) => {
       const v = this.view(i);
-      const mesh = buildGpuMesh(s.race.track);
+      if (this.atlas && !v.atlas) {
+        v.vmi.string('atlas').value = this.atlas.text;
+        v.atlas = true;
+      }
+      const mesh = buildGpuMesh(s.race.track, this.atlas);
       if (v.mesh !== mesh.text) {
         v.vmi.string('mesh').value = mesh.text;
         v.mesh = mesh.text;

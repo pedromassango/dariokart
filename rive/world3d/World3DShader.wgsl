@@ -4,6 +4,7 @@
 //
 // Vertex colour alpha carries a material id:
 //   255 lit flat      250 unlit/glow      245 rainbow glow (item boxes)
+//   248 glossy (plastic, shells, caps)   249 eye (wet, very glossy)
 //   240 instance body colour   241 instance hat colour   242 instance skin   243 instance trim
 //   10 grass (MK8 mow stripes)    20 asphalt
 //   30 water          35 lava              40 sand / dirt shoulder       50 snow / ice
@@ -79,7 +80,8 @@ fn vs_inst(@location(0) p: vec3<f32>, @location(1) n: vec4<f32>, @location(2) co
   o.normal = ln;
   o.color = col;
   o.tint = vec4<f32>(i2.xyz, i1.w);
-  o.extra = i3;
+  // extra.w = 1 marks models (karts, drivers, items) for the rim light
+  o.extra = vec4<f32>(i3.xyz, 1.0);
   return o;
 }
 
@@ -156,6 +158,10 @@ fn fs_world(i: VOut) -> @location(0) vec4<f32> {
     // lit flat
   } else if (m == 250) {
     lit = 0.0;
+  } else if (m == 248) {
+    spec = 0.55;
+  } else if (m == 249) {
+    spec = 1.4;
   } else if (m == 245) {
     lit = 0.0;
     base = hsv(fract(t * 0.35 + (wp.x + wp.y) * 0.01 + i.world.z * 0.08)) * 0.75 + vec3<f32>(0.25, 0.25, 0.25);
@@ -209,9 +215,21 @@ fn fs_world(i: VOut) -> @location(0) vec4<f32> {
     let sunDir = normalize(u.sun.xyz);
     let diff = max(dot(nrm, sunDir), 0.0);
     let hemi = 0.5 + 0.5 * nrm.z;
-    c = base * (u.misc.x + hemi * 0.12 + diff * u.misc.y);
     let h = normalize(sunDir + toCam);
-    c = c + vec3<f32>(1.0, 1.0, 1.0) * pow(max(dot(nrm, h), 0.0), 40.0) * spec;
+    if (i.extra.w > 0.5) {
+      // models: wrapped diffuse, sky-coloured fill from above, warm bounce from below, a rim light
+      // and a tight highlight, so the characters read as round, shiny toys like MK8's
+      let wrapD = clamp((dot(nrm, sunDir) + 0.35) / 1.35, 0.0, 1.0);
+      let sky = mix(vec3<f32>(0.55, 0.5, 0.45), u.skyTop.rgb * 0.6 + vec3<f32>(0.4, 0.4, 0.4), hemi);
+      c = base * (sky * (u.misc.x + 0.12) + vec3<f32>(1.0, 0.97, 0.9) * wrapD * u.misc.y * 1.05);
+      let rim = pow(1.0 - max(dot(nrm, toCam), 0.0), 3.0);
+      c = c + (u.skyHor.rgb * 0.5 + vec3<f32>(0.25, 0.25, 0.25)) * rim * 0.45 * (0.4 + 0.6 * hemi);
+      c = c + vec3<f32>(1.0, 1.0, 1.0) * pow(max(dot(nrm, h), 0.0), 60.0) * spec * 1.2;
+      c = c + vec3<f32>(1.0, 1.0, 1.0) * pow(max(dot(nrm, h), 0.0), 8.0) * spec * 0.08;
+    } else {
+      c = base * (u.misc.x + hemi * 0.12 + diff * u.misc.y);
+      c = c + vec3<f32>(1.0, 1.0, 1.0) * pow(max(dot(nrm, h), 0.0), 40.0) * spec;
+    }
   }
   // distance fog towards the horizon colour
   let d = distance(i.world, u.cam.xyz);
@@ -248,4 +266,57 @@ fn fs_sky(i: SkyOut) -> @location(0) vec4<f32> {
   let th = u.p0.z;
   let dir = normalize(u.fwd.xyz + u.right.xyz * (i.ndc.x * th * u.p0.w) + u.up.xyz * (i.ndc.y * th));
   return vec4<f32>(skyColor(dir), 1.0);
+}
+
+// ---------------------------------------------------------------- Rive billboards (sprite atlas)
+// Scenery sprites stand upright and turn to face the camera (like SMK's), signs / banner / crowd are
+// fixed quads seen from the front only. Both are alpha tested so the depth buffer sorts them with
+// everything else.
+
+@group(0) @binding(1) var atlasTex: texture_2d<f32>;
+@group(0) @binding(2) var atlasSampler: sampler;
+
+struct SpriteOut {
+  @builtin(position) pos: vec4<f32>,
+  @location(0) world: vec3<f32>,
+  @location(1) uv: vec2<f32>,
+}
+
+@vertex
+fn vs_sprite(@location(0) p: vec3<f32>, @location(1) off: vec2<f32>, @location(2) uv: vec2<f32>,
+             @location(3) n: vec4<f32>) -> SpriteOut {
+  var o: SpriteOut;
+  var w = p;
+  if (n.w > 0.25) {
+    // upright billboard: sideways along the camera's right vector, up along world z
+    let side = normalize(vec3<f32>(u.right.x, u.right.y, 0.0));
+    w = p + side * off.x + vec3<f32>(0.0, 0.0, off.y);
+    if (n.w < 0.75) {
+      w.z = w.z + sin(u.cam.w * 1.6 + n.z * 3.14159265) * 2.5;
+    }
+  } else {
+    // fixed art quad: hidden from behind
+    if (dot(u.cam.xy - p.xy, n.xy) < 0.0) {
+      o.pos = vec4<f32>(0.0, 0.0, 2.0, 1.0);
+      o.world = p;
+      o.uv = uv;
+      return o;
+    }
+  }
+  o.pos = toClip(w);
+  o.world = w;
+  o.uv = uv;
+  return o;
+}
+
+@fragment
+fn fs_sprite(i: SpriteOut) -> @location(0) vec4<f32> {
+  let t = textureSample(atlasTex, atlasSampler, i.uv);
+  if (t.a < 0.5) {
+    discard;
+  }
+  let d = distance(i.world, u.cam.xyz);
+  let f = clamp((d - u.fog.w) / (u.p0.x - u.fog.w), 0.0, 1.0);
+  let c = mix(t.rgb, u.fog.rgb, f * f * (3.0 - 2.0 * f));
+  return vec4<f32>(c, 1.0);
 }

@@ -5,123 +5,30 @@ import { SAMPLE_SPACING } from '../game/track';
 import { buildScene, shadeHex, type Scene3D } from './scene';
 import type { Cam } from './view';
 import { effectSparks } from './render';
+import { atlasKey, type SpriteAtlas } from './spriteAtlas';
+import { MAT, MeshWriter, rgb } from './meshWriter';
+import { buildKart, buildDriver } from './models';
+import { CHARACTERS } from '../game/characters';
+
+export { MAT };
 
 /**
- * Builds the data the Rive AnimaScript GPU renderer (rive/world3d) consumes:
- *  - a static triangle mesh for the course (ground, road, curbs, walls, scenery) plus instanced
- *    low-poly models (karts, item boxes, shells, bananas, coins), packed as base64 vertex bytes;
+ * Builds the data the Rive Luau GPU renderer (rive/world3d) consumes:
+ *  - a static triangle mesh for the course (ground, road, curbs, walls) plus instanced models (kart
+ *    chassis, one driver per character, item boxes, shells, bananas, coins…), as base64 vertex bytes;
+ *  - the Rive billboard sprites (scenery, signs, banner, crowd) textured from the sprite atlas;
  *  - a per-frame number string with the camera, lighting and every instance.
  * Vertex layout (20 bytes): position f32x3, normal snorm8x4, colour unorm8x4 (alpha = material id).
  */
 
-// material ids (see World3DShader.wgsl)
-export const MAT = { lit: 255, glow: 250, rainbow: 245, sparkle: 246, body: 240, hat: 241, skin: 242, trim: 243, grass: 10, road: 20, water: 30, lava: 35, sand: 40, snow: 50 } as const;
 /** instanced models; the last one (shadow) is drawn alpha-blended after everything else */
-export const MODEL = { kart: 0, box: 1, banana: 2, shell: 3, coin: 4, thwomp: 5, iceblock: 6, piranha: 7, spark: 8, shadow: 9 } as const;
-const MODEL_COUNT = 10;
+export const MODEL = { kart: 0, box: 1, banana: 2, shell: 3, coin: 4, thwomp: 5, iceblock: 6, piranha: 7, spark: 8, driver: 9, shadow: 9 + CHARACTERS.length } as const;
+const MODEL_COUNT = MODEL.shadow + 1;
 const UNIFORM_FLOATS = 56;
 const NEAR = 1.5;
 const FAR = 9000;
 
 const RAINBOW = ['#ff4040', '#ff9a2a', '#ffe840', '#40e060', '#40b0ff', '#a060ff'];
-
-function rgb(hex: string): [number, number, number] {
-  const v = parseInt(hex.slice(1), 16);
-  return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
-}
-
-class MeshWriter {
-  private buf = new ArrayBuffer(1 << 20);
-  private dv = new DataView(this.buf);
-  count = 0;
-
-  private ensure(bytes: number) {
-    if (this.count * 20 + bytes <= this.buf.byteLength) return;
-    const next = new ArrayBuffer(Math.max(this.buf.byteLength * 2, this.count * 20 + bytes));
-    new Uint8Array(next).set(new Uint8Array(this.buf));
-    this.buf = next;
-    this.dv = new DataView(next);
-  }
-
-  vertex(x: number, y: number, z: number, nx: number, ny: number, nz: number, c: [number, number, number], mat: number) {
-    this.ensure(20);
-    const o = this.count * 20;
-    const dv = this.dv;
-    dv.setFloat32(o, x, true); dv.setFloat32(o + 4, y, true); dv.setFloat32(o + 8, z, true);
-    dv.setInt8(o + 12, Math.round(nx * 127)); dv.setInt8(o + 13, Math.round(ny * 127)); dv.setInt8(o + 14, Math.round(nz * 127)); dv.setInt8(o + 15, 0);
-    dv.setUint8(o + 16, c[0]); dv.setUint8(o + 17, c[1]); dv.setUint8(o + 18, c[2]); dv.setUint8(o + 19, mat);
-    this.count++;
-  }
-
-  /** convex polygon (flat x,y,z list) as a triangle fan with its Newell normal */
-  poly(pts: ArrayLike<number>, color: string | [number, number, number], mat: number = MAT.lit) {
-    const n = pts.length / 3;
-    if (n < 3) return;
-    let nx = 0, ny = 0, nz = 0;
-    for (let i = 0; i < n; i++) {
-      const j = (i + 1) % n;
-      const x1 = pts[i * 3], y1 = pts[i * 3 + 1], z1 = pts[i * 3 + 2];
-      const x2 = pts[j * 3], y2 = pts[j * 3 + 1], z2 = pts[j * 3 + 2];
-      nx += (y1 - y2) * (z1 + z2); ny += (z1 - z2) * (x1 + x2); nz += (x1 - x2) * (y1 + y2);
-    }
-    const l = Math.hypot(nx, ny, nz) || 1;
-    nx /= l; ny /= l; nz /= l;
-    const c = typeof color === 'string' ? rgb(color) : color;
-    for (let i = 1; i < n - 1; i++) {
-      for (const k of [0, i, i + 1]) this.vertex(pts[k * 3], pts[k * 3 + 1], pts[k * 3 + 2], nx, ny, nz, c, mat);
-    }
-  }
-
-  /** ground-plane quad at height z (corners in order) */
-  quad(x0: number, y0: number, x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, z: number, color: string | [number, number, number], mat: number = MAT.lit) {
-    this.poly([x0, y0, z, x1, y1, z, x2, y2, z, x3, y3, z], color, mat);
-  }
-
-  /** axis-aligned (in local model space) box: centre, half extents */
-  box(cx: number, cy: number, cz: number, hx: number, hy: number, hz: number, color: string, mat: number = MAT.lit, top?: string) {
-    const x0 = cx - hx, x1 = cx + hx, y0 = cy - hy, y1 = cy + hy, z0 = cz - hz, z1 = cz + hz;
-    this.poly([x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1], top ?? color, mat);
-    this.poly([x0, y0, z0, x0, y1, z0, x1, y1, z0, x1, y0, z0], color, mat);
-    this.poly([x0, y0, z0, x1, y0, z0, x1, y0, z1, x0, y0, z1], color, mat);
-    this.poly([x0, y1, z0, x0, y1, z1, x1, y1, z1, x1, y1, z0], color, mat);
-    this.poly([x1, y0, z0, x1, y1, z0, x1, y1, z1, x1, y0, z1], color, mat);
-    this.poly([x0, y0, z0, x0, y0, z1, x0, y1, z1, x0, y1, z0], color, mat);
-  }
-
-  /** cylinder along an axis ('x' | 'y' | 'z') */
-  cylinder(cx: number, cy: number, cz: number, r: number, half: number, axis: 'x' | 'y' | 'z', sides: number, color: string, mat: number = MAT.lit, cap?: string) {
-    const ring = (s: number) => Array.from({ length: sides }, (_, i) => {
-      const a = (i / sides) * Math.PI * 2, u = Math.cos(a) * r, v = Math.sin(a) * r;
-      return axis === 'z' ? [cx + u, cy + v, cz + s] : axis === 'y' ? [cx + u, cy + s, cz + v] : [cx + s, cy + u, cz + v];
-    });
-    const a = ring(-half), b = ring(half);
-    for (let i = 0; i < sides; i++) {
-      const j = (i + 1) % sides;
-      this.poly([...a[i], ...a[j], ...b[j], ...b[i]], color, mat);
-    }
-    this.poly(b.flat(), cap ?? color, mat);
-    this.poly(a.slice().reverse().flat(), cap ?? color, mat);
-  }
-
-  /** low-poly sphere (UV) */
-  sphere(cx: number, cy: number, cz: number, r: number, color: string, mat: number = MAT.lit, rz = r, rings = 6, segs = 10) {
-    for (let i = 0; i < rings; i++) {
-      const t0 = (i / rings) * Math.PI - Math.PI / 2, t1 = ((i + 1) / rings) * Math.PI - Math.PI / 2;
-      for (let j = 0; j < segs; j++) {
-        const p0 = (j / segs) * Math.PI * 2, p1 = ((j + 1) / segs) * Math.PI * 2;
-        const pt = (t: number, p: number) => [cx + Math.cos(t) * Math.cos(p) * r, cy + Math.cos(t) * Math.sin(p) * r, cz + Math.sin(t) * rz];
-        const a = pt(t0, p0), b = pt(t0, p1), c = pt(t1, p1), d = pt(t1, p0);
-        // smooth normals: use the radial direction per vertex
-        const c3 = typeof color === 'string' ? rgb(color) : color;
-        const emit = (q: number[]) => { const nx = q[0] - cx, ny = q[1] - cy, nz = (q[2] - cz) * (r / rz); const l = Math.hypot(nx, ny, nz) || 1; this.vertex(q[0], q[1], q[2], nx / l, ny / l, nz / l, c3, mat); };
-        if (i > 0) { emit(a); emit(b); emit(c); }
-        if (i < rings - 1) { emit(a); emit(c); emit(d); }
-      }
-    }
-  }
-
-  bytes(): Uint8Array { return new Uint8Array(this.buf, 0, this.count * 20); }
-}
 
 function toBase64(bytes: Uint8Array): string {
   let s = '';
@@ -256,61 +163,6 @@ function buildCourse(W: MeshWriter, tr: Track, scene: Scene3D) {
 }
 
 // ------------------------------------------------------------------ models (local space: +x forward, z up)
-function buildKart(W: MeshWriter) {
-  const dark = '#24242a', tyre = '#1c1c20', metal = '#c4c8d4', white = '#ffffff';
-  // floor pan
-  W.box(0, 0, 1.5, 6.6, 3.2, 0.35, dark);
-  // tapered hull in the kart colour: wide and tall at the back, low and narrow at the nose
-  const hull = (x0: number, x1: number, w0: number, w1: number, zb: number, t0: number, t1: number, mat: number) => {
-    const P = [
-      [x0, -w0, zb], [x1, -w1, zb], [x1, w1, zb], [x0, w0, zb],
-      [x0, -w0 * 0.86, t0], [x1, -w1 * 0.8, t1], [x1, w1 * 0.8, t1], [x0, w0 * 0.86, t0],
-    ];
-    const q = (a: number, b: number, c: number, d: number) => W.poly([...P[a], ...P[b], ...P[c], ...P[d]], white, mat);
-    q(4, 5, 6, 7); q(0, 3, 2, 1); q(0, 1, 5, 4); q(3, 7, 6, 2); q(1, 2, 6, 5); q(0, 4, 7, 3);
-  };
-  hull(-6.4, -1.0, 3.7, 3.4, 1.8, 4.4, 3.6, MAT.body);   // rear body around the seat
-  hull(-1.0, 4.4, 3.4, 2.4, 1.8, 3.6, 2.9, MAT.body);    // mid body
-  hull(4.4, 7.0, 2.4, 1.6, 1.6, 2.9, 2.0, MAT.body);     // nose cone
-  // side pods
-  for (const s of [-1, 1]) W.box(-0.6, s * 3.9, 2.4, 2.6, 0.6, 0.7, white, MAT.trim);
-  // front bumper + rear wing on struts
-  W.box(7.2, 0, 1.9, 0.5, 3.6, 0.45, white, MAT.trim);
-  for (const s of [-1.8, 1.8]) W.box(-6.0, s, 5.0, 0.3, 0.3, 1.0, dark);
-  W.box(-6.4, 0, 6.1, 0.9, 4.2, 0.28, white, MAT.trim);
-  for (const s of [-1, 1]) W.box(-6.4, s * 4.3, 5.7, 1.0, 0.12, 0.7, white, MAT.trim);
-  // seat back + engine + exhausts
-  W.box(-2.6, 0, 4.9, 0.6, 2.0, 1.6, dark);
-  W.box(-5.3, 0, 4.7, 1.1, 1.8, 0.9, metal);
-  for (const s of [-1.3, 1.3]) W.cylinder(-7.0, s, 3.3, 0.55, 0.7, 'x', 10, metal, MAT.lit, '#3a3a40');
-  // wheels: fat tyres with coloured hubs
-  for (const [x, y, r, w] of [[4.6, 3.9, 1.9, 0.95], [4.6, -3.9, 1.9, 0.95], [-4.0, 4.3, 2.45, 1.35], [-4.0, -4.3, 2.45, 1.35]] as [number, number, number, number][]) {
-    W.cylinder(x, y, r, r, w, 'y', 16, tyre, MAT.lit, '#3a3a42');
-    W.cylinder(x, y + Math.sign(y) * (w + 0.02), r, r * 0.5, 0.06, 'y', 12, white, MAT.trim);
-    W.cylinder(x, y + Math.sign(y) * (w + 0.09), r, r * 0.18, 0.05, 'y', 8, metal);
-  }
-  // steering column + wheel
-  W.box(1.6, 0, 4.2, 0.25, 0.25, 0.9, dark);
-  W.cylinder(1.3, 0, 5.2, 1.0, 0.12, 'x', 12, dark);
-  // driver: overalls (trim), shirt/arms (hat colour like SMK), gloves, head, cap with emblem
-  W.box(-1.4, 0, 5.8, 1.4, 1.9, 1.5, white, MAT.trim);
-  W.box(-1.2, 0, 7.6, 1.2, 1.7, 0.8, white, MAT.hat);
-  for (const s of [-1, 1]) {
-    W.box(0.0, s * 1.75, 6.5, 1.5, 0.48, 0.48, white, MAT.hat);
-    W.sphere(1.3, s * 0.9, 5.4, 0.55, '#ffffff', MAT.lit, 0.55, 3, 6);
-  }
-  W.sphere(-1.0, 0, 9.8, 2.05, white, MAT.skin, 2.0, 6, 14);
-  W.sphere(0.95, 0, 9.4, 0.62, white, MAT.skin, 0.52, 4, 8);   // nose
-  W.box(0.75, 0, 8.7, 0.25, 1.0, 0.22, '#3a2416');              // moustache
-  W.sphere(-1.1, 0, 10.8, 2.2, white, MAT.hat, 1.35, 5, 14);   // cap dome
-  W.box(1.0, 0, 10.35, 1.4, 1.95, 0.16, white, MAT.hat);        // cap brim
-  W.cylinder(0.85, 0, 11.4, 0.7, 0.05, 'x', 12, '#ffffff');     // cap emblem
-  for (const s of [-0.75, 0.75]) {
-    W.box(0.92, s, 10.0, 0.06, 0.32, 0.5, '#ffffff');
-    W.box(0.97, s, 9.95, 0.06, 0.16, 0.3, '#1a1a40');
-  }
-}
-
 function buildThwomp(W: MeshWriter) {
   // stone block (front = +x) with spikes, a scowling face and teeth
   const stone = '#9aa0ae', dark = '#5a5f6c';
@@ -402,24 +254,82 @@ function buildCoin(W: MeshWriter) {
   W.box(0, 0, 3.4, 0.6, 0.55, 1.6, '#e0a000');
 }
 
-export interface GpuMesh { header: string; data: string; text: string; vertices: number }
+// ------------------------------------------------------------------ billboards (Rive artboards from the sprite atlas)
+/**
+ * 32 bytes per vertex: position f32x3, offset f32x2, uv f32x2, normal snorm8x4.
+ *  - camera-facing sprite: position = anchor on the ground, offset = (sideways, up) in world units,
+ *    normal.w = 1 (0.5 when it bobs; normal.z then holds the bob phase / pi)
+ *  - fixed art quad: position = the corner itself, offset = 0, normal = facing direction, normal.w = 0
+ */
+class SpriteWriter {
+  private buf = new ArrayBuffer(1 << 16);
+  private dv = new DataView(this.buf);
+  count = 0;
+
+  vertex(x: number, y: number, z: number, ox: number, oz: number, u: number, v: number, nx: number, ny: number, nz: number, nw: number) {
+    if ((this.count + 1) * 32 > this.buf.byteLength) {
+      const next = new ArrayBuffer(this.buf.byteLength * 2);
+      new Uint8Array(next).set(new Uint8Array(this.buf));
+      this.buf = next;
+      this.dv = new DataView(next);
+    }
+    const o = this.count * 32, dv = this.dv;
+    dv.setFloat32(o, x, true); dv.setFloat32(o + 4, y, true); dv.setFloat32(o + 8, z, true);
+    dv.setFloat32(o + 12, ox, true); dv.setFloat32(o + 16, oz, true);
+    dv.setFloat32(o + 20, u, true); dv.setFloat32(o + 24, v, true);
+    dv.setInt8(o + 28, Math.round(nx * 127)); dv.setInt8(o + 29, Math.round(ny * 127));
+    dv.setInt8(o + 30, Math.round(nz * 127)); dv.setInt8(o + 31, Math.round(nw * 127));
+    this.count++;
+  }
+
+  bytes(): Uint8Array { return new Uint8Array(this.buf, 0, this.count * 32); }
+}
+
+function buildSprites(S: SpriteWriter, scene: Scene3D, atlas: SpriteAtlas) {
+  for (const p of scene.props) {
+    const r = atlas.rects.get(p.artboard);
+    if (!r) continue;
+    const h = p.height, w = h * p.aspect, z0 = p.z - h * (1 - p.anchor), hw = w / 2;
+    const bob = p.bob !== undefined, nz = bob ? (((p.bob! / Math.PI) % 2) + 2) % 2 - 1 : 0, nw = bob ? 0.5 : 1;
+    const c = (sx: number, sz: number, u: number, v: number) => S.vertex(p.x, p.y, z0, sx, sz, u, v, 0, 0, nz, nw);
+    c(-hw, h, r.u0, r.v0); c(hw, h, r.u1, r.v0); c(hw, 0, r.u1, r.v1);
+    c(-hw, h, r.u0, r.v0); c(hw, 0, r.u1, r.v1); c(-hw, 0, r.u0, r.v1);
+  }
+  for (const a of scene.art) {
+    const r = atlas.rects.get(atlasKey(a.artboard, a.artboard === 'TurnSign' ? a.inputs : undefined));
+    if (!r) continue;
+    // the same corner order drawArt uses (mirrored signs swap left and right)
+    const [l, rt] = a.mirror ? [a.tr, a.tl] : [a.tl, a.tr];
+    const bl: [number, number, number] = a.mirror ? [a.tr[0] + (a.bl[0] - a.tl[0]), a.tr[1] + (a.bl[1] - a.tl[1]), a.bl[2]] : a.bl;
+    const br: [number, number, number] = [rt[0] + (bl[0] - l[0]), rt[1] + (bl[1] - l[1]), bl[2]];
+    const c = (q: [number, number, number], u: number, v: number) => S.vertex(q[0], q[1], q[2], 0, 0, u, v, a.nx, a.ny, 0, 0);
+    c(l, r.u0, r.v0); c(rt, r.u1, r.v0); c(br, r.u1, r.v1);
+    c(l, r.u0, r.v0); c(br, r.u1, r.v1); c(bl, r.u0, r.v1);
+  }
+}
+
+export interface GpuMesh { header: string; text: string; vertices: number }
 
 const meshCache = new WeakMap<Track, GpuMesh>();
 
-export function buildGpuMesh(tr: Track, scene?: Scene3D): GpuMesh {
+export function buildGpuMesh(tr: Track, atlas: SpriteAtlas | null, scene?: Scene3D): GpuMesh {
   const cached = meshCache.get(tr);
   if (cached) return cached;
   const W = new MeshWriter();
-  buildCourse(W, tr, scene ?? buildScene(tr));
+  scene ??= buildScene(tr);
+  buildCourse(W, tr, scene);
   const counts = [W.count];
-  for (const build of [buildKart, buildBox, buildBanana, buildShell, buildCoin, buildThwomp, buildIceBlock, buildPiranha, buildSpark, buildShadow]) {
+  const drivers = CHARACTERS.map((ch) => (w: MeshWriter) => buildDriver(w, ch));
+  for (const build of [buildKart, buildBox, buildBanana, buildShell, buildCoin, buildThwomp, buildIceBlock, buildPiranha, buildSpark, ...drivers, buildShadow]) {
     const before = W.count;
     build(W);
     counts.push(W.count - before);
   }
+  const S = new SpriteWriter();
+  if (atlas) buildSprites(S, scene, atlas);
   const header = counts.join(',');
-  const data = toBase64(W.bytes());
-  const m = { header, data, text: header + ';' + data, vertices: W.count };
+  // "<static>,<model>…;<sprite vertices>;<base64 mesh>;<base64 sprites>"
+  const m = { header, text: header + ';' + S.count + ';' + toBase64(W.bytes()) + ';' + toBase64(S.bytes()), vertices: W.count };
   meshCache.set(tr, m);
   return m;
 }
@@ -481,18 +391,26 @@ export function packFrame(race: Race, cam: Cam, opts: FrameOpts, flipY = 1): str
   const groups: number[][] = Array.from({ length: MODEL_COUNT }, () => []);
   const push = (model: number, v: number[]) => groups[model].push(...v);
   const time = opts.time;
-  // karts
+  // karts (one squeezed between the lens and the kart you follow would fill the screen, so it is hidden)
+  const depth = (x: number, y: number, z: number) => fx * (x - px) + fy * (y - py) + fz * (z - pz);
+  const focusDepth = opts.focus ? depth(opts.focus.x, opts.focus.y, opts.focus.z) : 0;
   for (const k of race.karts) {
     if (k.invulnTimer > 0 && Math.floor(time * 20) % 2 === 0) continue;
+    if (opts.focus && k !== opts.focus && depth(k.x, k.y, k.z) < Math.min(focusDepth - 8, 26)) continue;
     const c = rgb(k.char.color);
     const facing = k.heading + k.spinAngle + k.drift * 0.35;
     const flash = k.starTimer > 0 ? 0.5 + 0.5 * Math.sin(time * 30) : 0;
     const roll = -(k.steerVis || 0) * 0.06 + (k.drift ? -k.drift * 0.08 : 0);
     const pitch = k.z > 0.5 ? -0.12 : 0;
     if (k.fallTimer <= 0 && k.z > -2) push(MODEL.shadow, [k.x, k.y, 0, facing, k.scale, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0]);
-    push(MODEL.kart, [k.x, k.y, k.z, facing, 0.9 * k.scale, k.squishTimer > 0 ? 0.35 : 1, roll, flash,
+    const inst = [k.x, k.y, k.z, facing, 0.9 * k.scale, k.squishTimer > 0 ? 0.35 : 1, roll, flash,
       c[0] / 255, c[1] / 255, c[2] / 255, pitch,
-      packColor(k.char.hat), packColor(k.char.skin), packColor(k.char.trim), 0]);
+      packColor(k.char.hat), packColor(k.char.skin), packColor(k.char.trim), 0];
+    push(MODEL.kart, inst);
+    // the driver leans into turns a little more than the kart
+    const di = CHARACTERS.findIndex((ch) => ch.id === k.char.id);
+    inst[6] = roll * 1.8;
+    push(MODEL.driver + Math.max(0, di), inst);
   }
   // item boxes
   const tr = race.track;

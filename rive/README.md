@@ -5,7 +5,7 @@ game loads at runtime. The signed outputs are committed in `public/assets/`, so 
 
 | Project | Output | Language | What it does |
 |---|---|---|---|
-| `world3d/` | `public/assets/world3d.riv` | Luau + WGSL | The 3D world. A layout script (`World3D.luau`) owns the GPU pipelines, depth buffer and buffers, and a WGSL shader (`World3DShader.wgsl`) does the lighting, fog, sky and clouds, procedural grass, asphalt, sand, water and lava, the rainbow item boxes and soft shadows. The game feeds it the course mesh, the per-frame camera and instances (kart chassis plus one smooth-shaded driver model per character), and a sprite atlas through the `World` view model. The atlas holds the game's Rive billboard artboards (trees, signs, the start banner, the crowd), which the game bakes with the Rive renderer, so they are drawn in the same depth-tested pass as everything else. It runs on `@rive-app/webgl2-advanced` through a deferred session. |
+| `world3d/` | `public/assets/world3d.riv` | Luau + WGSL | The 3D world. A layout script (`World3D.luau`) owns the GPU pipelines, render targets and buffers and renders each frame in passes: a 2048² sun shadow map, the scene in HDR (half float) with 4x MSAA, a bloom chain and a filmic composite. The WGSL shader (`World3DShader.wgsl`) does physically based lighting (GGX speculars, Fresnel, clear-coat kart paint, polished metal, sky reflections), soft bilinear-PCF shadows, translucent swaying foliage, procedural grass, asphalt, sand, snow, water and lava, an HDR sky with sun and clouds, aerial-perspective fog, ACES tone mapping, vignette and grain. The game feeds it the course mesh (with smooth noise-shaped hills), per-frame camera, sun shadow matrix and instances (karts, a modelled driver per character, 3D trees, palms, cacti, items) and a sprite atlas of the game's Rive billboard artboards through the `World` view model. It runs on `@rive-app/webgl2-advanced` through a deferred session. |
 | `speedfx/` | `public/assets/speedfx.riv` | AnimaScript | MK8-style speed lines and boost glow, drawn with Rive paths over the race view. It is driven by the `SpeedFx` view model (`speed`, `boost`, `drift`) and runs on `@rive-app/canvas-advanced`. |
 
 ## Working on them
@@ -38,3 +38,5 @@ project, so the GPU renderer is Luau. The AnimaScript effect needs no shader.
   `init()`, so look view model properties up lazily.
 - `@rive-app/canvas-advanced` commits a renderer's draws when the Rive animation frame that issued them ends. To read
   pixels back (the sprite atlas), draw inside `rive.requestAnimationFrame` and read after that frame.
+- A bind group takes texture slots 0–7 only, so the post-processing inputs live in `@group(1)`.
+- Uniforms travel as text: keep enough significant digits (matrices and texel sizes are far below 0.001).

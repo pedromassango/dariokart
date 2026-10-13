@@ -185,6 +185,7 @@ function onSurface(W: MeshWriter, c: V3, r: V3, dir: V3, size: V3, color: Col, m
 // ------------------------------------------------------------------ kart
 export function buildKart(W: MeshWriter) {
   const dark = '#26262c', tyre = '#1d1d21', metal = '#c8ccd6', white = '#ffffff';
+  const chrome = MAT.metal;
   // tub: a rounded body in the kart colour, low nose rising to the seat and engine
   loft(W, [
     [8.1, 0.9, 1.5, 2.2], [7.5, 1.9, 1.2, 2.7], [6.2, 2.6, 1.1, 3.0], [4.2, 3.0, 1.0, 3.2], [1.6, 3.3, 1.0, 3.4],
@@ -201,11 +202,12 @@ export function buildKart(W: MeshWriter) {
   ellipsoid(W, [7.9, 0, 2.55], [0.25, 0.75, 0.75], '#ffffff', MAT.gloss, { frame: turned(0, -0.5), segs: 14, rings: 6 });
   // seat
   ellipsoid(W, [-3.0, 0, 5.6], [0.8, 2.2, 2.2], dark, MAT.lit, { segs: 16, rings: 8 });
-  // engine block, exhausts and rear wing
-  ellipsoid(W, [-5.6, 0, 4.7], [1.4, 2.0, 1.0], metal, MAT.gloss, { segs: 16, rings: 8 });
-  for (const s of [-1.3, 1.3]) {
-    lathe(W, [-7.0, s, 3.4], [-1, 0, 0.18], [[0, 0.8], [0.4, 0.8], [0.46, 0.6], [0.42, -1.2], [0, -1.2]], '#7c808c', MAT.gloss, 12);
-    ellipsoid(W, [-7.82, s, 3.55], [0.05, 0.32, 0.32], '#141416', MAT.lit, { segs: 10, rings: 4 });
+  // engine with cooling fins, side exhausts angled up and back, rear wing
+  ellipsoid(W, [-5.5, 0, 4.6], [1.3, 1.7, 0.9], '#3a3c44', MAT.gloss, { segs: 16, rings: 8 });
+  for (let k = 0; k < 4; k++) ellipsoid(W, [-5.5, 0, 5.15 + k * 0.0], [1.0 - k * 0.15, 1.75, 0.08], metal, MAT.gloss, { frame: turned(0, 0), segs: 12, rings: 4, lat0: -0.3, lat1: 0.3 });
+  for (const s of [-1, 1]) {
+    capsule(W, [-5.4, s * 2.6, 3.4], [-7.2, s * 3.0, 4.6], 0.42, 0.5, metal, chrome, 12);
+    ellipsoid(W, [-7.33, s * 3.03, 4.69], [0.12, 0.38, 0.38], '#141416', MAT.lit, { frame: turned(0, 0.55), segs: 10, rings: 4 });
   }
   for (const s of [-1.8, 1.8]) capsule(W, [-6.0, s, 4.2], [-6.5, s, 6.1], 0.25, 0.25, dark);
   loft(W, [[-5.6, 4.2, 6.0, 6.2], [-6.3, 4.4, 6.0, 6.55], [-7.3, 4.4, 6.1, 6.45]], white, MAT.trim, 5, 16);
@@ -215,7 +217,7 @@ export function buildKart(W: MeshWriter) {
     const s = Math.sign(y), c: V3 = [x, y, r], ax: V3 = [0, s, 0];
     lathe(W, c, ax, [[r * 0.55, -w], [r * 0.88, -w], [r * 0.98, -w * 0.82], [r, -w * 0.45], [r, w * 0.45], [r * 0.98, w * 0.82], [r * 0.88, w], [r * 0.55, w]], tyre, MAT.lit, 22);
     lathe(W, c, ax, [[0, w * 1.02], [r * 0.56, w * 1.0], [r * 0.6, w * 0.7]], white, MAT.trim, 16);
-    lathe(W, add(c, [0, s * w * 1.02, 0]), ax, [[0, 0.32], [0.3, 0.25], [0.45, 0]], metal, MAT.gloss, 10);
+    lathe(W, add(c, [0, s * w * 1.02, 0]), ax, [[0, 0.32], [0.3, 0.25], [0.45, 0]], metal, chrome, 10);
   }
   // steering column + wheel
   capsule(W, [2.6, 0, 3.6], [1.6, 0, 5.1], 0.22, 0.22, dark);
@@ -484,5 +486,98 @@ export function buildDriver(W: MeshWriter, ch: CharacterDef) {
     case 'donkeyjr': return ape(W, ch);
     case 'toadie': return mushroom(W, ch);
     case 'koopo': return turtle(W, ch);
+  }
+}
+
+// ------------------------------------------------------------------ scenery (replaces the cartoon billboards)
+// Sizes match the billboard heights at instance scale 1; the base sits on z = 0.
+
+/** a deciduous tree: tapered bark trunk with a few limbs and a crown of leaf clusters (36 tall) */
+export function buildTree(W: MeshWriter) {
+  const bark = '#5e4330';
+  capsule(W, [0, 0, -1], [0.3, 0.2, 19], 1.7, 1.0, bark, MAT.bark, 12);
+  capsule(W, [0.2, 0.1, 13], [4.5, 2.0, 20], 0.8, 0.45, bark, MAT.bark, 8);
+  capsule(W, [0.1, 0, 15], [-4.0, -2.4, 21], 0.75, 0.4, bark, MAT.bark, 8);
+  capsule(W, [0.2, 0, 16], [1.0, -4.2, 22], 0.7, 0.4, bark, MAT.bark, 8);
+  const leaf = '#4f8f3a';
+  ellipsoid(W, [0.3, 0, 25.5], [8.6, 8.6, 7.6], leaf, MAT.leaf, { rings: 9, segs: 16 });
+  for (const [x, y, z, r] of [[5.2, 2.4, 22.5, 5.6], [-5.0, -2.6, 23, 5.8], [1.2, -5.2, 23.5, 5.2], [-2.0, 5.0, 24, 5.4], [1.5, 1.0, 30.5, 5.6], [-3.4, 1.4, 28.5, 4.6], [3.6, -2.4, 29, 4.4]] as number[][]) {
+    ellipsoid(W, [x, y, z], [r, r, r * 0.88], leaf, MAT.leaf, { rings: 7, segs: 12 });
+  }
+}
+
+/** a snowy pine for the ice course (36 tall) */
+export function buildPine(W: MeshWriter) {
+  capsule(W, [0, 0, -1], [0, 0, 30], 1.2, 0.5, '#4a3324', MAT.bark, 10);
+  for (let k = 0; k < 5; k++) {
+    const z = 6 + k * 5.6, r = 9.5 - k * 1.65, hh = 9 - k * 0.7;
+    lathe(W, [0, 0, z], [0, 0, 1], [[0.6, 0], [r, 0.4], [r * 0.82, 1.6], [0.2, hh]], '#2f5a38', MAT.leaf, 14);
+    lathe(W, [0, 0, z + 0.55], [0, 0, 1], [[r * 0.55, 1.4], [r * 0.6, 1.9], [0.15, hh + 0.2]], '#f2f6fb', MAT.snow, 14);
+  }
+}
+
+/** a round bush of leaf clumps (12 tall) */
+export function buildBush(W: MeshWriter) {
+  const leaf = '#4d8c38';
+  ellipsoid(W, [0, 0, 5], [6.4, 6.0, 5.6], leaf, MAT.leaf, { rings: 8, segs: 14 });
+  for (const [x, y, z, r] of [[4.6, 2.0, 4, 4.2], [-4.4, -1.6, 4.2, 4.4], [1.0, -4.2, 4.6, 4.0], [-1.6, 4.0, 4.4, 4.0], [0.6, 0.8, 8.4, 3.8]] as number[][]) {
+    ellipsoid(W, [x, y, z], [r, r, r * 0.85], leaf, MAT.leaf, { rings: 6, segs: 11 });
+  }
+}
+
+/** a palm: curved ringed trunk, drooping fronds and coconuts (50 tall) */
+export function buildPalm(W: MeshWriter) {
+  const pts: V3[] = [];
+  for (let k = 0; k <= 8; k++) {
+    const t = k / 8;
+    pts.push([Math.sin(t * 1.3) * 7.5, 0, t * 44]);
+  }
+  for (let k = 0; k < 8; k++) {
+    capsule(W, pts[k], pts[k + 1], 1.55 - k * 0.07, 1.48 - k * 0.07, k % 2 ? '#8a6a44' : '#7a5c3a', MAT.bark, 10);
+  }
+  const top = pts[8];
+  for (let f = 0; f < 9; f++) {
+    const a = (f / 9) * Math.PI * 2 + 0.2;
+    const dx = Math.cos(a), dy = Math.sin(a);
+    // a frond: a drooping arc of leaflet quads, two-sided (the shader lights both faces)
+    let prev: V3 = top, prevW = 0.3;
+    for (let s = 1; s <= 6; s++) {
+      const t = s / 6, len = 15 * t;
+      const p: V3 = [top[0] + dx * len, top[1] + dy * len, top[2] + 2.5 * Math.sin(t * Math.PI * 0.7) - 9 * t * t];
+      const w = 2.6 * Math.sin(t * Math.PI) + 0.2;
+      const sx = -dy, sy = dx;
+      W.poly([prev[0] - sx * prevW, prev[1] - sy * prevW, prev[2], p[0] - sx * w, p[1] - sy * w, p[2] - 0.5, p[0] + sx * w, p[1] + sy * w, p[2] - 0.5, prev[0] + sx * prevW, prev[1] + sy * prevW, prev[2]], '#3f8a34', MAT.leaf);
+      prev = p; prevW = w;
+    }
+  }
+  for (const [x, y] of [[1.1, 0.6], [-0.6, 1.0], [0.2, -1.1]]) ellipsoid(W, [top[0] + x, top[1] + y, top[2] - 1.6], [0.95, 0.95, 1.05], '#5a3a1e', MAT.gloss, { rings: 6, segs: 10 });
+}
+
+/** a saguaro cactus with two arms and a flower (30 tall) */
+export function buildCactus(W: MeshWriter) {
+  const green = '#3f8a3e';
+  capsule(W, [0, 0, -1], [0, 0, 26], 2.4, 2.2, green, MAT.gloss, 16);
+  capsule(W, [0, 0, 11], [4.6, 0, 12], 1.4, 1.4, green, MAT.gloss, 12);
+  capsule(W, [4.6, 0, 12], [4.8, 0, 20], 1.4, 1.3, green, MAT.gloss, 12);
+  capsule(W, [0, 0, 15], [-4.0, 0.4, 16], 1.3, 1.3, green, MAT.gloss, 12);
+  capsule(W, [-4.0, 0.4, 16], [-4.2, 0.4, 22], 1.3, 1.2, green, MAT.gloss, 12);
+  for (let k = 0; k < 5; k++) {
+    const a = (k / 5) * Math.PI * 2;
+    ellipsoid(W, [Math.cos(a) * 0.9, Math.sin(a) * 0.9, 28.2], [0.8, 0.8, 0.5], '#ff6aa0', MAT.lit, { rings: 4, segs: 8 });
+  }
+  ellipsoid(W, [0, 0, 28.5], [0.6, 0.6, 0.5], '#ffd23f', MAT.lit, { rings: 4, segs: 8 });
+}
+
+/** a gnarled dead tree for the haunted course (90 tall, mostly below the boardwalk) */
+export function buildDeadTree(W: MeshWriter) {
+  const bark = '#3d3242';
+  capsule(W, [0, 0, -2], [1.5, 0.5, 60], 4.2, 2.4, bark, MAT.bark, 12);
+  capsule(W, [1.5, 0.5, 60], [-1.5, 1.0, 84], 2.4, 1.0, bark, MAT.bark, 10);
+  for (const [z, a, l] of [[40, 0.4, 22], [52, 2.6, 18], [62, 4.4, 20], [72, 1.6, 15], [80, 3.6, 11]] as number[][]) {
+    const b: V3 = [1.2, 0.5, z];
+    const m: V3 = [b[0] + Math.cos(a) * l * 0.55, b[1] + Math.sin(a) * l * 0.55, z + l * 0.35];
+    const e: V3 = [b[0] + Math.cos(a + 0.5) * l, b[1] + Math.sin(a + 0.5) * l, z + l * 0.5];
+    capsule(W, b, m, 1.4, 0.8, bark, MAT.bark, 8);
+    capsule(W, m, e, 0.8, 0.3, bark, MAT.bark, 8);
   }
 }

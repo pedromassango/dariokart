@@ -4,7 +4,7 @@
  */
 
 // material ids (see World3DShader.wgsl)
-export const MAT = { lit: 255, glow: 250, gloss: 248, eye: 249, rainbow: 245, sparkle: 246, body: 240, hat: 241, skin: 242, trim: 243, grass: 10, road: 20, water: 30, lava: 35, sand: 40, snow: 50 } as const;
+export const MAT = { lit: 255, glow: 250, gloss: 248, eye: 249, metal: 247, leaf: 239, bark: 238, rainbow: 245, sparkle: 246, body: 240, hat: 241, skin: 242, trim: 243, grass: 10, road: 20, water: 30, lava: 35, sand: 40, snow: 50 } as const;
 export function rgb(hex: string): [number, number, number] {
   const v = parseInt(hex.slice(1), 16);
   return [(v >> 16) & 255, (v >> 8) & 255, v & 255];

@@ -16,7 +16,11 @@ export interface Face {
   cx: number; cy: number; cz: number; rad: number; // bounding sphere
   twoSided: boolean;
   glow: boolean; // unlit (emissive)
+  hill?: boolean; // part of a distant hill (the GPU world builds smooth hills instead)
 }
+
+/** a distant hill / mountain, kept as parameters so renderers can build their own geometry */
+export interface Hill { x: number; y: number; r: number; h: number; color: string; top: string; style: string; z0: number }
 
 export interface ArtQuad {
   artboard: string;
@@ -43,6 +47,7 @@ export interface Scene3D {
   faces: Face[];
   art: ArtQuad[];
   props: Prop[];
+  hills: Hill[];
   clouds: { x: number; y: number; z: number; w: number }[];
 }
 
@@ -53,6 +58,7 @@ function rgb(hex: string): [number, number, number] {
 
 class Builder {
   faces: Face[] = [];
+  hills: Hill[] = [];
   face(pts: number[], color: string, opts: { twoSided?: boolean; glow?: boolean } = {}) {
     const n = pts.length / 3;
     // Newell normal
@@ -101,6 +107,13 @@ class Builder {
 
   /** dome-like hill: cone fan with a ring of facets */
   hill(x: number, y: number, r: number, h: number, color: string, topColor: string, style: string, z0 = 0) {
+    this.hills.push({ x, y, r, h, color, top: topColor, style, z0 });
+    const first = this.faces.length;
+    this.hillFaces(x, y, r, h, color, topColor, style, z0);
+    for (let i = first; i < this.faces.length; i++) this.faces[i].hill = true;
+  }
+
+  private hillFaces(x: number, y: number, r: number, h: number, color: string, topColor: string, style: string, z0: number) {
     const sides = 9;
     if (style === 'mesa') {
       const ring = (rr: number, z: number) => Array.from({ length: sides }, (_, i) => { const a = (i / sides) * Math.PI * 2 + r; return [x + Math.cos(a) * rr, y + Math.sin(a) * rr, z]; });
@@ -331,7 +344,7 @@ export function buildScene(tr: Track): Scene3D {
       clouds.push({ x: cx + Math.cos(a) * rr, y: cy + Math.sin(a) * rr, z: 260 + rnd() * 260, w: 260 + rnd() * 260 });
     }
   }
-  return { faces: B.faces, art, props, clouds };
+  return { faces: B.faces, art, props, hills: B.hills, clouds };
 }
 
 export function shadeHex(hex: string, f: number): string {

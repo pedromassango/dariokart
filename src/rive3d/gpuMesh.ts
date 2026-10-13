@@ -2,12 +2,12 @@ import type { Track } from '../game/track';
 import type { Race } from '../game/race';
 import type { Kart } from '../game/kart';
 import { SAMPLE_SPACING } from '../game/track';
-import { buildScene, shadeHex, type Scene3D } from './scene';
+import { buildScene, shadeHex, type Hill, type Scene3D } from './scene';
 import type { Cam } from './view';
 import { effectSparks } from './render';
 import { atlasKey, type SpriteAtlas } from './spriteAtlas';
 import { MAT, MeshWriter, rgb } from './meshWriter';
-import { buildKart, buildDriver } from './models';
+import { buildKart, buildDriver, buildTree, buildPine, buildBush, buildPalm, buildCactus, buildDeadTree } from './models';
 import { CHARACTERS } from '../game/characters';
 
 export { MAT };
@@ -22,9 +22,21 @@ export { MAT };
  */
 
 /** instanced models; the last one (shadow) is drawn alpha-blended after everything else */
-export const MODEL = { kart: 0, box: 1, banana: 2, shell: 3, coin: 4, thwomp: 5, iceblock: 6, piranha: 7, spark: 8, driver: 9, shadow: 9 + CHARACTERS.length } as const;
+export const MODEL = {
+  kart: 0, box: 1, banana: 2, shell: 3, coin: 4, thwomp: 5, iceblock: 6, piranha: 7, spark: 8,
+  tree: 9, pine: 10, bush: 11, palm: 12, cactus: 13, deadtree: 14,
+  driver: 15, shadow: 15 + CHARACTERS.length,
+} as const;
+/** scenery the GPU world draws as 3D models instead of billboards: kind -> [model, height at scale 1] */
+const SCENERY_3D: Record<string, [number, number]> = {
+  tree: [MODEL.tree, 36], bush: [MODEL.bush, 12], palm: [MODEL.palm, 50], cactus: [MODEL.cactus, 30], deadtree: [MODEL.deadtree, 90],
+};
 const MODEL_COUNT = MODEL.shadow + 1;
-const UNIFORM_FLOATS = 56;
+const UNIFORM_FLOATS = 80;
+const SHADOW_SIZE = 2048;
+/** half extent of the sun shadow map in world units (it follows the camera) */
+const SHADOW_RADIUS = 160;
+const SHADOW_DEPTH = 700;
 const NEAR = 1.5;
 const FAR = 9000;
 
@@ -158,8 +170,116 @@ function buildCourse(W: MeshWriter, tr: Track, scene: Scene3D) {
     }
   }
   // walls, pipes, slabs, gate, signs' frames, grandstand, hills… (the face list shared with the vector renderer)
-  for (const f of scene.faces) W.poly(f.pts, [f.r, f.g, f.b], f.glow ? MAT.glow : MAT.lit);
+  for (const f of scene.faces) if (!f.hill) W.poly(f.pts, [f.r, f.g, f.b], f.glow ? MAT.glow : MAT.lit);
+  for (const h of scene.hills) smoothHill(W, h, id);
   // item box pedestals are not drawn in SMK; nothing else is static
+}
+
+
+// ------------------------------------------------------------------ smooth hills / mountains
+function hash(x: number, y: number): number {
+  const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+function vnoise(x: number, y: number): number {
+  const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy;
+  const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+  const a = hash(ix, iy), b = hash(ix + 1, iy), c = hash(ix, iy + 1), d = hash(ix + 1, iy + 1);
+  return (a + (b - a) * sx) * (1 - sy) + (c + (d - c) * sx) * sy;
+}
+
+/** ridged multi-octave noise in 0..1 (mountain ridges) */
+function ridged(x: number, y: number): number {
+  let v = 0, amp = 0.55, f = 1;
+  for (let o = 0; o < 4; o++) { v += (1 - Math.abs(vnoise(x * f, y * f) * 2 - 1)) * amp; amp *= 0.5; f *= 2.1; }
+  return v;
+}
+
+/**
+ * A hill as a smooth, noise-shaped radial mesh with per-vertex normals: grassy rolling hills,
+ * layered mesas, rocky jagged peaks and snow-capped mountains (snow by height and slope).
+ */
+function smoothHill(W: MeshWriter, h: Hill, id: string) {
+  const RINGS = 14, SEGS = 36;
+  const seed = h.x * 0.013 + h.y * 0.007;
+  const P: number[][][] = [];
+  for (let i = 0; i <= RINGS; i++) {
+    const t = i / RINGS; // 0 = peak, 1 = foot
+    const row: number[][] = [];
+    for (let j = 0; j < SEGS; j++) {
+      const a = (j / SEGS) * Math.PI * 2;
+      const wob = 1 + (vnoise(Math.cos(a) * 1.6 + seed, Math.sin(a) * 1.6 - seed) - 0.5) * 0.45;
+      const rr = h.r * t * wob;
+      const px = h.x + Math.cos(a) * rr, py = h.y + Math.sin(a) * rr;
+      const nx = px * 0.012, ny = py * 0.012;
+      let z: number;
+      if (h.style === 'mesa') {
+        // flat top, steep terraced cliffs, a skirt of scree
+        const cliff = 1 - smoothstep(0.55, 0.8, t);
+        const terrace = Math.floor(cliff * 4) / 4;
+        z = h.h * (cliff * 0.75 + terrace * 0.25) * (0.94 + vnoise(nx * 3, ny * 3) * 0.12);
+      } else if (h.style === 'jagged' || h.style === 'snow') {
+        const base = Math.pow(1 - t, 1.25);
+        z = h.h * base * (0.7 + ridged(nx * 1.4 + seed, ny * 1.4) * 0.55);
+      } else {
+        // rolling: a smooth bell with gentle bumps
+        const base = Math.pow(Math.cos(t * Math.PI / 2), 1.7);
+        z = h.h * base * (0.86 + vnoise(nx * 2 + seed, ny * 2) * 0.28);
+      }
+      if (i === RINGS) z = 0;
+      row.push([px, py, h.z0 + z]);
+    }
+    P.push(row);
+  }
+  // smooth normals from the grid
+  const N: number[][][] = P.map((row, i) => row.map((p, j) => {
+    const a = P[Math.max(0, i - 1)][j], b = P[Math.min(RINGS, i + 1)][j];
+    const c = row[(j + SEGS - 1) % SEGS], d = row[(j + 1) % SEGS];
+    let tx = b[0] - a[0], ty = b[1] - a[1], tz = b[2] - a[2];
+    if (i === 0) { tx = b[0] - p[0]; ty = b[1] - p[1]; tz = b[2] - p[2]; }
+    const ux = d[0] - c[0], uy = d[1] - c[1], uz = d[2] - c[2];
+    let nx = ty * uz - tz * uy, ny = tz * ux - tx * uz, nz = tx * uy - ty * ux;
+    if (nz < 0) { nx = -nx; ny = -ny; nz = -nz; }
+    if (i === 0) { nx = 0; ny = 0; nz = 1; }
+    const l = Math.hypot(nx, ny, nz) || 1;
+    return [nx / l, ny / l, nz / l];
+  }));
+  const side = rgb(h.color), top = rgb(h.top);
+  const rock: [number, number, number] = id === 'castle' ? [70, 34, 28] : id === 'ghost' ? [52, 40, 70] : [118, 112, 108];
+  const vert = (i: number, j: number) => {
+    const p = P[i][j], n = N[i][j];
+    const rel = (p[2] - h.z0) / Math.max(1, h.h);
+    let c: [number, number, number] = side, mat: number = MAT.lit;
+    if (h.style === 'round' || h.style === 'island') {
+      c = h.style === 'island' && rel < 0.12 ? top : side;
+      mat = h.style === 'island' && rel < 0.12 ? MAT.sand : MAT.grass;
+    } else if (h.style === 'mesa') {
+      // sandstone bands
+      const band = 0.82 + 0.18 * Math.sin(rel * 26);
+      c = [Math.min(255, side[0] * band), Math.min(255, side[1] * band), Math.min(255, side[2] * band)];
+      mat = n[2] > 0.85 && rel > 0.9 ? MAT.grass : MAT.sand;
+      if (mat === MAT.grass) c = top;
+    } else if (h.style === 'snow') {
+      const snowy = rel > 0.45 - n[2] * 0.25 && n[2] > 0.45;
+      c = snowy ? [235, 242, 250] : [96, 104, 118];
+      mat = snowy ? MAT.snow : MAT.lit;
+    } else {
+      c = rel > 0.8 ? top : side;
+      if (id === 'castle' || id === 'ghost') c = rel > 0.75 ? top : [Math.round((side[0] + rock[0]) / 2), Math.round((side[1] + rock[1]) / 2), Math.round((side[2] + rock[2]) / 2)];
+    }
+    W.vertex(p[0], p[1], p[2], n[0], n[1], n[2], c, mat);
+  };
+  for (let i = 0; i < RINGS; i++) for (let j = 0; j < SEGS; j++) {
+    const k = (j + 1) % SEGS;
+    vert(i, j); vert(i + 1, j); vert(i + 1, k);
+    vert(i, j); vert(i + 1, k); vert(i, k);
+  }
+}
+
+function smoothstep(a: number, b: number, x: number): number {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
 }
 
 // ------------------------------------------------------------------ models (local space: +x forward, z up)
@@ -250,8 +370,8 @@ function buildShell(W: MeshWriter) {
 }
 
 function buildCoin(W: MeshWriter) {
-  W.cylinder(0, 0, 3.4, 3.0, 0.45, 'y', 14, '#ffc820', MAT.lit, '#ffe060');
-  W.box(0, 0, 3.4, 0.6, 0.55, 1.6, '#e0a000');
+  W.cylinder(0, 0, 3.4, 3.0, 0.45, 'y', 18, '#ffc630', MAT.metal, '#ffd040');
+  W.box(0, 0, 3.4, 0.6, 0.55, 1.6, '#e0a000', MAT.metal);
 }
 
 // ------------------------------------------------------------------ billboards (Rive artboards from the sprite atlas)
@@ -287,6 +407,7 @@ class SpriteWriter {
 
 function buildSprites(S: SpriteWriter, scene: Scene3D, atlas: SpriteAtlas) {
   for (const p of scene.props) {
+    if (SCENERY_3D[p.kind]) continue;
     const r = atlas.rects.get(p.artboard);
     if (!r) continue;
     const h = p.height, w = h * p.aspect, z0 = p.z - h * (1 - p.anchor), hw = w / 2;
@@ -316,11 +437,12 @@ export function buildGpuMesh(tr: Track, atlas: SpriteAtlas | null, scene?: Scene
   const cached = meshCache.get(tr);
   if (cached) return cached;
   const W = new MeshWriter();
-  scene ??= buildScene(tr);
+  scene ??= sceneFor(tr);
   buildCourse(W, tr, scene);
   const counts = [W.count];
   const drivers = CHARACTERS.map((ch) => (w: MeshWriter) => buildDriver(w, ch));
-  for (const build of [buildKart, buildBox, buildBanana, buildShell, buildCoin, buildThwomp, buildIceBlock, buildPiranha, buildSpark, ...drivers, buildShadow]) {
+  for (const build of [buildKart, buildBox, buildBanana, buildShell, buildCoin, buildThwomp, buildIceBlock, buildPiranha, buildSpark,
+    buildTree, buildPine, buildBush, buildPalm, buildCactus, buildDeadTree, ...drivers, buildShadow]) {
     const before = W.count;
     build(W);
     counts.push(W.count - before);
@@ -340,9 +462,59 @@ function packColor(hex: string): number {
 }
 
 function f(v: number): string {
-  // compact, parseable numbers
+  // compact, parseable numbers (instances: world units, 3 decimals is plenty)
   if (Number.isInteger(v)) return String(v);
   return v.toFixed(3);
+}
+
+/** uniforms keep 7 significant digits: matrices and texel sizes are far below 0.001 */
+function fu(v: number): string {
+  if (Number.isInteger(v)) return String(v);
+  return v.toPrecision(7);
+}
+
+
+/** v flip of the shadow map render (some GL paths render targets upside down); set once if detected */
+export let shadowFlip = 1;
+export function setShadowFlip(v: number) { shadowFlip = v; }
+
+/**
+ * Orthographic sun view covering the area in front of the camera, snapped to whole shadow-map texels
+ * so shadows do not shimmer as the camera moves. Returns a column-major mat4 (world -> clip, z 0..1).
+ */
+function sunShadowMatrix(cam: Cam, focus: Kart | null, L: number[]): number[] {
+  const l = Math.hypot(L[0], L[1], L[2]);
+  const lz = [L[0] / l, L[1] / l, L[2] / l];
+  // light right / up axes
+  let lx = [-lz[1], lz[0], 0];
+  const lxl = Math.hypot(lx[0], lx[1]) || 1;
+  lx = [lx[0] / lxl, lx[1] / lxl, 0];
+  const ly = [lz[1] * lx[2] - lz[2] * lx[1], lz[2] * lx[0] - lz[0] * lx[2], lz[0] * lx[1] - lz[1] * lx[0]];
+  const fx = Math.cos(cam.yaw), fy = Math.sin(cam.yaw);
+  const ax = focus ? focus.x : cam.x, ay = focus ? focus.y : cam.y;
+  const c = [ax + fx * SHADOW_RADIUS * 0.6, ay + fy * SHADOW_RADIUS * 0.6, 0];
+  const texel = (SHADOW_RADIUS * 2) / SHADOW_SIZE;
+  const dot = (a: number[], b: number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cx = Math.round(dot(c, lx) / texel) * texel, cy = Math.round(dot(c, ly) / texel) * texel, cz = dot(c, lz);
+  const R = SHADOW_RADIUS, D = SHADOW_DEPTH;
+  // rows: x = (p·lx - cx)/R, y = (p·ly - cy)/R, z = 0.5 - (p·lz - cz)/(2D)
+  const r0 = [lx[0] / R, lx[1] / R, lx[2] / R, -cx / R];
+  const r1 = [ly[0] / R, ly[1] / R, ly[2] / R, -cy / R];
+  const r2 = [-lz[0] / (2 * D), -lz[1] / (2 * D), -lz[2] / (2 * D), 0.5 + cz / (2 * D)];
+  const r3 = [0, 0, 0, 1];
+  return [r0[0], r1[0], r2[0], r3[0], r0[1], r1[1], r2[1], r3[1], r0[2], r1[2], r2[2], r3[2], r0[3], r1[3], r2[3], r3[3]];
+}
+
+const sceneCache = new WeakMap<Track, Scene3D>();
+function sceneFor(tr: Track): Scene3D {
+  let sc = sceneCache.get(tr);
+  if (!sc) { sc = buildScene(tr); sceneCache.set(tr, sc); }
+  return sc;
+}
+
+function hashUnit(v: number): number {
+  const x = Math.sin(v * 12.9898) * 43758.5453;
+  return x - Math.floor(x);
 }
 
 const driftVis = new WeakMap<Kart, { a: number; t: number }>();
@@ -385,10 +557,13 @@ export function packFrame(race: Race, cam: Cam, opts: FrameOpts, flipY = 1): str
     top[0] / 255, top[1] / 255, top[2] / 255, night ? 1 : 0,
     hor[0] / 255, hor[1] / 255, hor[2] / 255, clouds,
     L[0], L[1], L[2], night ? 0 : 1,
-    night ? 0.55 : 0.58, night ? 0.35 : 0.42, 0, 0,
+    night ? 0.3 : 0.26, night ? 0.35 : 0.42, night ? 1 : 0, 0,
+    ...sunShadowMatrix(cam, opts.focus, L),
+    1 / SHADOW_SIZE, (SHADOW_RADIUS * 2) / SHADOW_SIZE, night ? 0.75 : 0.85, shadowFlip,
+    night ? 1.1 : 0.78, 0.8, 0.85, 0.03,
   ];
   if (u.length !== UNIFORM_FLOATS) throw new Error('uniform layout');
-  const parts: string[] = u.map(f);
+  const parts: string[] = u.map(fu);
 
   const groups: number[][] = Array.from({ length: MODEL_COUNT }, () => []);
   const push = (model: number, v: number[]) => groups[model].push(...v);
@@ -451,6 +626,20 @@ export function packFrame(race: Race, cam: Cam, opts: FrameOpts, flipY = 1): str
       push(MODEL.piranha, [o.x, o.y, 0, face + Math.sin(time * 0.9 + i) * 0.4, 1.25, 1, bite, 0, 1, 1, 1, 0, 0, 0, 0, 0]);
     }
   });
+  // 3D scenery (trees, bushes, palms, cacti, dead trees) near enough to matter
+  const scene = sceneFor(tr);
+  const reach = th.fogFar + 150;
+  for (const p of scene.props) {
+    const m = SCENERY_3D[p.kind];
+    if (!m) continue;
+    const dx = p.x - px, dy = p.y - py;
+    if (dx * dx + dy * dy > reach * reach) continue;
+    if (fx * dx + fy * dy < -60) continue; // behind the camera (still casts no visible shadow there)
+    const r = hashUnit(p.x * 3.1 + p.y * 1.7);
+    const model = p.kind === 'tree' && id === 'ice' ? MODEL.pine : m[0];
+    const hue = 0.9 + r * 0.2;
+    push(model, [p.x, p.y, p.z, r * 6.283, p.height / m[1], 0.92 + r * 0.16, 0, 0, hue, 1, 2 - hue, 0, 0, 0, 0, 0]);
+  }
   for (const p of effectSparks()) {
     const c = p.color;
     const s = p.size * 0.55 * Math.min(1, (p.life / p.max) * 2.5);

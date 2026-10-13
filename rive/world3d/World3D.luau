@@ -24,6 +24,8 @@ type World3D = {
   meshProp: Property<string>?,
   frameProp: Property<string>?,
   atlasProp: Property<string>?,
+  meshAck: Property<number>?,
+  atlasAck: Property<number>?,
   meshSrc: string,
   frameSrc: string,
   atlasSrc: string,
@@ -406,6 +408,8 @@ function init(self: World3D, context: Context): boolean
     self.meshProp = vm:getString('mesh')
     self.frameProp = vm:getString('frame')
     self.atlasProp = vm:getString('atlas')
+    self.meshAck = vm:getNumber('meshAck')
+    self.atlasAck = vm:getNumber('atlasAck')
   end
   local f = context:features()
   if f.maxSamples >= 4 then
@@ -487,13 +491,30 @@ function draw(self: World3D, renderer: Renderer)
       return
     end
   end
+  -- the mesh and atlas are megabytes of text that the runtime hands to the script on every draw while
+  -- they are set, so the game clears them once acknowledged; an empty value means "keep what is loaded"
   local mesh = meshProp.value
-  if mesh ~= self.meshSrc then
-    loadMesh(self, mesh)
+  if mesh ~= '' then
+    if mesh ~= self.meshSrc then
+      loadMesh(self, mesh)
+    end
+    local ack = self.meshAck
+    if ack then
+      ack.value += 1
+    end
   end
   local atlasProp = self.atlasProp
-  if atlasProp and atlasProp.value ~= self.atlasSrc then
-    loadAtlas(self, atlasProp.value)
+  if atlasProp then
+    local atlas = atlasProp.value
+    if atlas ~= '' then
+      if atlas ~= self.atlasSrc then
+        loadAtlas(self, atlas)
+      end
+      local ack = self.atlasAck
+      if ack then
+        ack.value += 1
+      end
+    end
   end
   local frame = frameProp.value
   if frame ~= self.frameSrc then
@@ -589,6 +610,8 @@ return function(context: Context): Layout<World3D>
     meshProp = nil,
     frameProp = nil,
     atlasProp = nil,
+    meshAck = nil,
+    atlasAck = nil,
     meshSrc = '',
     frameSrc = '',
     atlasSrc = '',

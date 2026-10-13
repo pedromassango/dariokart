@@ -3,17 +3,17 @@
 A Super Mario Kart–inspired kart racer for the web, **rendered entirely with Rive**, with online multiplayer, bots at three difficulty levels, and procedural music and sound effects.
 
 <p align="center">
-  <img src="docs/media/dariokart-demo.gif" alt="Dariokart gameplay: racing on Dario Circuit with the Rive HUD" width="720">
+  <img src="docs/media/dariokart-demo.gif" alt="Dariokart action reel: a mushroom boost through the pack, red and green shells launching rivals into the air, star power and lightning, all rendered in Rive" width="720">
 </p>
 
 <p align="center">
-  🎬 <a href="docs/media/dariokart-demo.mp4"><b>Watch the full demo with sound (MP4)</b></a>: Rive menus, a race start with the countdown referee, items, five more courses, the finish and results.
+  🎬 <a href="docs/media/dariokart-demo.mp4"><b>Watch the full demo with sound (MP4)</b></a>: Rive menus, a race start with the countdown referee, boosts, shells, star power and lightning, five more courses, the finish and results.
 </p>
 
-| | |
-|---|---|
-| ![Course select, drawn with Rive](docs/media/shot-select.jpg) | ![Racing on Dario Circuit](docs/media/shot-race.jpg) |
-| ![Choco Isle](docs/media/shot-choco.jpg) | ![Finishing on Prism Road](docs/media/shot-prism.jpg) |
+| | | |
+|---|---|---|
+| ![Mushroom boost through the pack on Dario Circuit](docs/media/shot-race.jpg) | ![Star power sends rivals flying](docs/media/shot-star.jpg) | ![Course select, drawn with Rive](docs/media/shot-select.jpg) |
+| ![Choco Isle](docs/media/shot-choco.jpg) | ![Frost Lake](docs/media/shot-ice.jpg) | ![Finishing on Prism Road](docs/media/shot-prism.jpg) |
 
 - **A real GPU 3D world, written with Rive Scripting.** `rive/world3d` is a Rive file whose Luau layout script drives a WGSL shader through Rive's GPU API, rendering every frame in passes: a sun shadow map, the scene in HDR with 4x MSAA, bloom and a filmic (ACES) composite with vignette and grain. Lighting is physically based (GGX speculars, Fresnel, clear-coat kart paint, polished metal coins and chrome, sky reflections) with soft shadows from karts, trees and walls, translucent foliage swaying in the wind, procedural grass, asphalt, sand, snow, water and glowing lava, smooth noise-shaped hills, snow-capped and rocky mountains, an HDR sky with sun and clouds, and aerial-perspective haze. Karts, a modelled driver for each character (caps, hair, crowns, shells, snouts and eyes), 3D trees, pines, palms, cacti, item boxes, shells, bananas, coins and particles are instanced models. The game builds the meshes and streams the camera and objects into the script through view model data binding. It runs on Rive's WebGL2 runtime (`@rive-app/webgl2-advanced`) at 60 fps, with one camera per player in split screen.
 - **AnimaScript effects.** `rive/speedfx` is an AnimaScript (Rive's TypeScript-syntax language, compiled to WebAssembly) layout that draws MK8-style speed lines and a boost glow with Rive paths, driven live by your kart's speed, boost and drift.

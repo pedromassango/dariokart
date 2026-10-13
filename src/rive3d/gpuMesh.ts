@@ -345,6 +345,8 @@ function f(v: number): string {
   return v.toFixed(3);
 }
 
+const driftVis = new WeakMap<Kart, { a: number; t: number }>();
+
 export interface FrameOpts { focus: Kart | null; time: number; aspect: number }
 
 /** Uniforms + instances for one camera, as the comma separated string world3d.as parses. */
@@ -398,10 +400,15 @@ export function packFrame(race: Race, cam: Cam, opts: FrameOpts, flipY = 1): str
     if (k.invulnTimer > 0 && Math.floor(time * 20) % 2 === 0) continue;
     if (opts.focus && k !== opts.focus && depth(k.x, k.y, k.z) < Math.min(focusDepth - 8, 26)) continue;
     const c = rgb(k.char.color);
-    const facing = k.heading + k.spinAngle + k.drift * 0.35;
+    // ease the drift angle in and out instead of snapping the model 20 degrees
+    const prev = driftVis.get(k) ?? { a: 0, t: time };
+    const step = Math.min(1, Math.max(0, time - prev.t) * 10);
+    prev.a += (k.drift * 0.35 - prev.a) * step; prev.t = time;
+    driftVis.set(k, prev);
+    const facing = k.heading + k.spinAngle + prev.a;
     const flash = k.starTimer > 0 ? 0.5 + 0.5 * Math.sin(time * 30) : 0;
     const roll = -(k.steerVis || 0) * 0.06 + (k.drift ? -k.drift * 0.08 : 0);
-    const pitch = k.z > 0.5 ? -0.12 : 0;
+    const pitch = -0.12 * Math.min(1, Math.max(0, k.z) / 4);
     if (k.fallTimer <= 0 && k.z > -2) push(MODEL.shadow, [k.x, k.y, 0, facing, k.scale, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0]);
     const inst = [k.x, k.y, k.z, facing, 0.9 * k.scale, k.squishTimer > 0 ? 0.35 : 1, roll, flash,
       c[0] / 255, c[1] / 255, c[2] / 255, pitch,

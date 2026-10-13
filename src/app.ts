@@ -8,6 +8,9 @@ import { CHARACTERS } from './game/characters';
 import { GpuWorld } from './rive3d/gpuWorld';
 import { SpeedFx } from './rive/speedFx';
 
+/** device pixels the GPU world may render per frame (about 1920x1080 x 1.5) */
+const GPU_PIXEL_BUDGET = 3_100_000;
+
 export interface Widget {
   canvas: HTMLCanvasElement;
   renderer: WrappedRenderer;
@@ -100,7 +103,10 @@ export class App {
     this.canvas.style.height = this.cssH + 'px';
     this.canvas.width = Math.floor(this.cssW * this.dpr);
     this.canvas.height = Math.floor(this.cssH * this.dpr);
-    this.gpu?.resize(this.cssW, this.cssH, Math.min(2, window.devicePixelRatio || 1));
+    // the GPU world renders with 4x MSAA, so keep it inside a pixel budget: on large Retina / 4K
+    // screens full device resolution overloads the GPU and frames arrive unevenly (judder)
+    const budget = Math.sqrt(GPU_PIXEL_BUDGET / Math.max(1, this.cssW * this.cssH));
+    this.gpu?.resize(this.cssW, this.cssH, Math.max(1, Math.min(2, window.devicePixelRatio || 1, budget)));
     document.documentElement.style.setProperty('--game-w', this.cssW + 'px');
     document.documentElement.style.setProperty('--game-h', this.cssH + 'px');
     document.documentElement.style.setProperty('--game-scale', String(Math.min(this.cssW / 512, this.cssH / 448)));

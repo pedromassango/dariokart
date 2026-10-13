@@ -551,7 +551,7 @@ export class ChaseCam extends Cam {
   follow(k: Kart, dt: number, intro: number | null) {
     const target = k.heading + (k.drift !== 0 ? k.drift * 0.2 : 0);
     if (!this.init) { this.heading = target; this.init = true; }
-    else this.heading = wrapAngle(this.heading + wrapAngle(target - this.heading) * Math.min(1, dt * 6));
+    else this.heading = wrapAngle(this.heading + wrapAngle(target - this.heading) * Math.min(1, dt * 4));
     let h = this.heading, dist = 36 - this.boost * 4, height = 13, pitch = 0.2;
     if (intro !== null) {
       const e = 1 - Math.pow(1 - Math.min(1, intro), 3);
@@ -560,11 +560,13 @@ export class ChaseCam extends Cam {
       height = 13 + 26 * (1 - e);
       pitch = 0.2 + 0.16 * (1 - e);
     }
-    const kz = Math.max(-25, k.z);
+    // small hops (drifting) do not bob the camera; big jumps and falls are followed gently
+    const kz = k.z > 0 && k.z < 12 && k.fallTimer <= 0 ? 0 : Math.max(-25, k.z);
     const wx = k.x - Math.cos(h) * dist, wy = k.y - Math.sin(h) * dist, wz = kz * 0.6 + height;
     if (!(k.fallTimer > 1.3 && this.hx !== 0)) {
       const a = intro !== null || this.hx === 0 ? 1 : Math.min(1, dt * 10);
-      this.hx += (wx - this.hx) * a; this.hy += (wy - this.hy) * a; this.hz += (wz - this.hz) * a;
+      const az = intro !== null || this.hx === 0 ? 1 : Math.min(1, dt * 3);
+      this.hx += (wx - this.hx) * a; this.hy += (wy - this.hy) * a; this.hz += (wz - this.hz) * az;
     }
     this.x = this.hx; this.y = this.hy; this.z = this.hz;
     // aim at a point slightly ahead of the kart
